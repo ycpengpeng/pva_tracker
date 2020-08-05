@@ -14,7 +14,6 @@
 using namespace Eigen;
 
 Vector3d current_p;
-bool in_offboard = false;
 mavros_msgs::State current_state;
 
 void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
@@ -25,7 +24,6 @@ void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 
 void stateCallback(const mavros_msgs::State::ConstPtr &msg)
 {
-    in_offboard = msg->mode == "OFFBOARD";
     current_state = *msg;
 }
 
@@ -34,6 +32,8 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
 
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 1, positionCallback);
+
     ros::Publisher pva_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/pva_setpoint", 1);
 
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>
@@ -91,7 +91,7 @@ int main(int argc, char** argv) {
 
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
-        if(!in_offboard){
+        if(current_state.mode != "OFFBOARD" || !current_state.armed){
             pva_setpoint.positions.push_back(current_p(0)); //x
             pva_setpoint.positions.push_back(current_p(1)); //y
             pva_setpoint.positions.push_back(current_p(2)); //z
@@ -103,22 +103,31 @@ int main(int argc, char** argv) {
 
         }else{
             counter ++;
-            pva_setpoint.positions.push_back(recorded_takeoff_position(0)); //x
-            pva_setpoint.positions.push_back(recorded_takeoff_position(1)); //y
-
-            pva_setpoint.velocities.push_back(0);
-            pva_setpoint.velocities.push_back(0);
-
             if(counter < take_off_send_times / 2){
+                pva_setpoint.positions.push_back(recorded_takeoff_position(0)); //x
+                pva_setpoint.positions.push_back(recorded_takeoff_position(1)); //y
+                pva_setpoint.velocities.push_back(0);
+                pva_setpoint.velocities.push_back(0);
+
                 pva_setpoint.positions.push_back(0.5*take_off_acc*counter*delt_t*counter*delt_t); //z
                 pva_setpoint.velocities.push_back(counter*delt_t*take_off_acc);  //vz
             }else if(counter < take_off_send_times){
+                pva_setpoint.positions.push_back(recorded_takeoff_position(0)); //x
+                pva_setpoint.positions.push_back(recorded_takeoff_position(1)); //y
+                pva_setpoint.velocities.push_back(0);
+                pva_setpoint.velocities.push_back(0);
+
                 double t_this = (counter-take_off_send_times/2)*delt_t;
                 pva_setpoint.positions.push_back(take_off_send_times/2*delt_t*take_off_acc*t_this - 0.5*take_off_acc*t_this*t_this); //z
                 pva_setpoint.velocities.push_back(take_off_send_times/2*delt_t*take_off_acc - take_off_acc*t_this);  //vz
             }else{
+                pva_setpoint.positions.push_back(5); //x
+                pva_setpoint.positions.push_back(-5); //y
+                pva_setpoint.velocities.push_back(0);
+                pva_setpoint.velocities.push_back(0);
+
                 pva_setpoint.positions.push_back(take_off_height); //z
-                pva_setpoint.velocities.push_back(0);  //vz
+                pva_setpoint.velocities.push_back(0.0);  //vz
                 counter --;
             }
         }
@@ -129,10 +138,10 @@ int main(int argc, char** argv) {
         pva_setpoint.accelerations.push_back(0);
         pva_pub.publish(pva_setpoint);
 
-        if(current_p(2) > take_off_height-0.05){
-            ROS_WARN("Takeoff Complete!");
-            break;
-        }
+//        if(current_p(2) > take_off_height-0.05){
+//            ROS_WARN("Takeoff Complete!");
+//            break;
+//        }
 
         ROS_INFO_THROTTLE(1.0, "P x=%f, y=%f, z=%f", pva_setpoint.positions[0], pva_setpoint.positions[1], pva_setpoint.positions[2]);
         ROS_INFO_THROTTLE(1.0, "V x=%f, y=%f, z=%f", pva_setpoint.velocities[0], pva_setpoint.velocities[1], pva_setpoint.velocities[2]);
