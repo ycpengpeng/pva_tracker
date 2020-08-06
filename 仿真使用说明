@@ -11,3 +11,7 @@ export ROS_PACKAGE_PATH=$ROS_PACKAGE_PATH:$(pwd)/Tools/sitl_gazebo
 make px4_sitl_default gazebo
 
 
+mavros启动：
+roslaunch mavros px4.launch fcu_url:="udp://:14540@127.0.0.1:14557"
+
+

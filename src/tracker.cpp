@@ -25,6 +25,9 @@ Vector3d velocity_error_p;
 Vector3d velocity_error_d;
 Vector3d velocity_error_i;
 
+double p_i_acc_error_limit;
+double v_i_acc_error_limit;
+
 // Global Variables
 Vector3d planned_p;
 Vector3d planned_v;
@@ -33,7 +36,7 @@ double planned_yaw;
 Vector3d current_p;
 Vector3d current_v;
 Quaterniond current_att;
-ros::Publisher att_ctrl_pub;
+ros::Publisher att_ctrl_pub, odom_sp_ned_pub;
 double thrust_factor;
 
 Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
@@ -43,7 +46,7 @@ Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
     return result;
 }
 
-void vector3dLimit(Vector3d &v, double limit)
+void vector3dLimit(Vector3d &v, double limit)  ///limit should be positive
 {
     if(limit > 0){
         for(int i=0; i<3; i++){
@@ -61,6 +64,16 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     planned_yaw = msg->positions[3];
     planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
     planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];
+
+    nav_msgs::Odometry odom_sp_enu;
+    odom_sp_enu.header.stamp = ros::Time::now();
+    odom_sp_enu.pose.pose.position.x = planned_p(0);
+    odom_sp_enu.pose.pose.position.y = planned_p(1);
+    odom_sp_enu.pose.pose.position.z = planned_p(2);
+    odom_sp_enu.twist.twist.linear.x = planned_v(0);
+    odom_sp_enu.twist.twist.linear.y = planned_v(1);
+    odom_sp_enu.twist.twist.linear.z = planned_v(2);
+    odom_sp_ned_pub.publish(odom_sp_enu);
 
     /// Calculate desired thrust and attitude
     Vector3d p_error = planned_p - current_p;
@@ -81,13 +94,14 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
         return;
     }
 
+    /**Core code**/
     Vector3d delt_p_error = p_error - p_error_last;
     Vector3d delt_v_error = v_error - v_error_last;
 
     p_error_accumulate += p_error;
     v_error_accumulate += v_error;
-    vector3dLimit(p_error_accumulate, 1.0);
-    vector3dLimit(v_error_accumulate, 0.5);
+    vector3dLimit(p_error_accumulate, p_i_acc_error_limit);
+    vector3dLimit(v_error_accumulate, v_i_acc_error_limit);
 
     Vector3d a_fb =   /// PID
             vectorElementMultiply(p_error, position_error_p) + vectorElementMultiply(v_error, velocity_error_p) +
@@ -114,6 +128,8 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     Vector3d att_current_vector(att_current_vector_quat.x(), att_current_vector_quat.y(),
                                 att_current_vector_quat.z());
     double thrust_des = a_des.norm() * thrust_factor;  //a_des.dot(att_current_vector) * THRUST_FACTOR
+
+    /**End of Core code**/
 
     att_setpoint.header.stamp = ros::Time::now();
     att_setpoint.orientation.w = att_des.w();
@@ -160,9 +176,12 @@ void configureCallback(tracker::PVA_TrackerConfig &config, uint32_t level) {
     position_error_p << config.position_p_xy, config.position_p_xy, config.position_p_z;
     position_error_d << config.position_d_xy, config.position_d_xy, config.position_d_z;
     position_error_i << config.position_i_xy, config.position_i_xy, config.position_i_z;
+    p_i_acc_error_limit = config.p_i_acc_error_limit;
+
     velocity_error_p << config.velocity_p_xy, config.velocity_p_xy, config.velocity_p_z;
     velocity_error_d << config.velocity_d_xy, config.velocity_d_xy, config.velocity_d_z;
     velocity_error_i << config.velocity_i_xy, config.velocity_i_xy, config.velocity_i_z;
+    v_i_acc_error_limit = config.v_i_acc_error_limit;
     thrust_factor = config.hover_thrust_factor;
 }
 
@@ -180,8 +199,8 @@ int main(int argc, char** argv) {
     ros::Subscriber pva_sub = nh.subscribe("/pva_setpoint", 1, pvaCallback);
     ros::Subscriber pose_sub = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 1, odomCallback);
 
-    /// TODO: check if the topic is right.
     att_ctrl_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1);
+    odom_sp_ned_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_ned", 1);
 
     ros::spin();
     return 0;
