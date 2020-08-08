@@ -1,0 +1,5 @@
+请首先使用XBEE连接机载电脑和地面端电脑（程序中波特率为57600，需要匹配）
+
+1.机载电脑中将 script/onboard_configure.py设置为开机启动，注意调整文件中的串口号波特率等使得XBEE能够正常启动。
+
+2.地面端启动ground_reconfigure_start.sh

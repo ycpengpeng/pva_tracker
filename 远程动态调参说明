@@ -1,0 +1,9 @@
+请首先使用XBEE连接机载电脑和地面端电脑（程序中波特率为57600，需要匹配），本程序基于ROS的dynamic reconfigure开发远程调参功能。
+
+1.机载电脑中将 script/onboard_configure.py设置为开机启动，注意调整文件中的串口号波特率等使得XBEE能够正常启动。
+
+2.地面端启动reconfigure_ground_start.sh，启动时候会加载机载电脑中当前的参数，拖动地面端rqt_reconfigure当中的参数（建议对比较好的参数及时保存yaml），修改完成后点击发送，发送成功则机载电脑参数修改完成，不成功可以再次发送。
+
+注意：
+机载电脑或者地面端对应程序重启后，另一端也要重启，无法直接连接！(地面端若只是rqt_reconfigure不小心关掉直接rosrun rqt_reconfigure rqt_reconfigure即可，不用重启)
+（原因：为了最快的实现，没有做heartbeat）

@@ -198,7 +198,7 @@ int main(int argc, char** argv) {
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
         if(current_state.mode != "OFFBOARD" || !current_state.armed){
-            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), 0.0);
+            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), M_PI);
         }else{
             counter ++;
             double z_sp, vz_sp;
@@ -207,7 +207,7 @@ int main(int argc, char** argv) {
                 vz_sp = counter*delt_t*take_off_acc;
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
                 Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), 0.0);
+                setPVA(p_sp, v_sp, Vector3d::Zero(), M_PI);
 
             }else if(counter < take_off_send_times){
                 double t_this = (counter-take_off_send_times/2)*delt_t;
@@ -216,11 +216,11 @@ int main(int argc, char** argv) {
 
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
                 Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), 0.0);
+                setPVA(p_sp, v_sp, Vector3d::Zero(), M_PI);
 
             }else{
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
-                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), 0.0);
+                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), M_PI);
                 counter --;
             }
         }
