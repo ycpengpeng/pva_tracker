@@ -36,7 +36,7 @@ double planned_yaw;
 Vector3d current_p;
 Vector3d current_v;
 Quaterniond current_att;
-ros::Publisher att_ctrl_pub, odom_sp_ned_pub;
+ros::Publisher att_ctrl_pub, odom_sp_enu_pub;
 double thrust_factor;
 
 Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
@@ -65,6 +65,13 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
     planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];
 
+//    planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
+//    planned_yaw = msg->positions[3];
+//    planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
+//    planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
+
+
+    /// Publish to record in rosbag
     nav_msgs::Odometry odom_sp_enu;
     odom_sp_enu.header.stamp = ros::Time::now();
     odom_sp_enu.pose.pose.position.x = planned_p(0);
@@ -73,7 +80,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     odom_sp_enu.twist.twist.linear.x = planned_v(0);
     odom_sp_enu.twist.twist.linear.y = planned_v(1);
     odom_sp_enu.twist.twist.linear.z = planned_v(2);
-    odom_sp_ned_pub.publish(odom_sp_enu);
+    odom_sp_enu_pub.publish(odom_sp_enu);
 
     /// Calculate desired thrust and attitude
     Vector3d p_error = planned_p - current_p;
@@ -113,29 +120,31 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 
     Vector3d z_w_norm(0, 0, 1.0);
     Vector3d a_des = a_fb + planned_a + GRAVITATIONAL_ACC * z_w_norm;
+
     Vector3d att_des_norm = a_des / a_des.norm();
 
-    Quaterniond att_des = Quaterniond::FromTwoVectors(z_w_norm, att_des_norm);
+    Quaterniond z_w_quat(0, 0, 0, 1.0);
+    Quaterniond att_current_vector_quat = current_att * z_w_quat * current_att.inverse();
+    Vector3d current_att_vector(att_current_vector_quat.x(), att_current_vector_quat.y(), att_current_vector_quat.z());
+
+//    Quaterniond att_des_q = Quaterniond::FromTwoVectors(current_att_vector, att_des_norm);
+    Quaterniond att_des_q = Quaterniond::FromTwoVectors(z_w_norm, att_des_norm);
 
     //add yaw
     Quaterniond yaw_quat(cos(planned_yaw/2.0), att_des_norm(0)*sin(planned_yaw/2.0),
             att_des_norm(1)*sin(planned_yaw/2.0),att_des_norm(2)*sin(planned_yaw/2.0));
-    att_des = yaw_quat * att_des;
+    att_des_q = yaw_quat * att_des_q;
 
     //Calculate thrust
-    Quaterniond z_w_quat(0, 0, 0, 1.0);
-    Quaterniond att_current_vector_quat = current_att * z_w_quat * current_att.inverse();
-    Vector3d att_current_vector(att_current_vector_quat.x(), att_current_vector_quat.y(),
-                                att_current_vector_quat.z());
     double thrust_des = a_des.norm() * thrust_factor;  //a_des.dot(att_current_vector) * THRUST_FACTOR
 
     /**End of Core code**/
 
     att_setpoint.header.stamp = ros::Time::now();
-    att_setpoint.orientation.w = att_des.w();
-    att_setpoint.orientation.x = att_des.x();
-    att_setpoint.orientation.y = att_des.y();
-    att_setpoint.orientation.z = att_des.z();
+    att_setpoint.orientation.w = att_des_q.w();
+    att_setpoint.orientation.x = att_des_q.x();
+    att_setpoint.orientation.y = att_des_q.y();
+    att_setpoint.orientation.z = att_des_q.z();
     att_setpoint.thrust = thrust_des;
 
     ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
@@ -144,33 +153,22 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     att_ctrl_pub.publish(att_setpoint);
 }
 
-
-//void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
-//{
-//    /// ENU frame
-//    current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
-//    current_att.w() = msg->pose.orientation.w;
-//    current_att.x() = msg->pose.orientation.x;
-//    current_att.y() = msg->pose.orientation.y;
-//    current_att.z() = msg->pose.orientation.z;
-//}
-//
-//void velocityCallback(const geometry_msgs::TwistStamped::ConstPtr &msg)
-//{
-//    /// ENU frame
-//    current_v << msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z;
-//}
-
-void odomCallback(const nav_msgs::Odometry::ConstPtr &msg)
+void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
     /// ENU frame
-    current_p << msg->pose.pose.position.x, msg->pose.pose.position.y, msg->pose.pose.position.z;
-    current_att.w() = msg->pose.pose.orientation.w;
-    current_att.x() = msg->pose.pose.orientation.x;
-    current_att.y() = msg->pose.pose.orientation.y;
-    current_att.z() = msg->pose.pose.orientation.z;
-    current_v << msg->twist.twist.linear.x, msg->twist.twist.linear.y, msg->twist.twist.linear.z;
+    current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+    current_att.w() = msg->pose.orientation.w;
+    current_att.x() = msg->pose.orientation.x;
+    current_att.y() = msg->pose.orientation.y;
+    current_att.z() = msg->pose.orientation.z;
 }
+
+void velocityCallback(const geometry_msgs::TwistStamped::ConstPtr &msg)
+{
+    /// ENU frame
+    current_v << msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z;
+}
+
 
 void configureCallback(tracker::PVA_TrackerConfig &config, uint32_t level) {
     position_error_p << config.position_p_xy, config.position_p_xy, config.position_p_z;
@@ -197,10 +195,11 @@ int main(int argc, char** argv) {
     ros::NodeHandle nh;
 
     ros::Subscriber pva_sub = nh.subscribe("/pva_setpoint", 1, pvaCallback);
-    ros::Subscriber pose_sub = nh.subscribe<nav_msgs::Odometry>("/mavros/local_position/odom", 1, odomCallback);
+    ros::Subscriber position_sub = nh.subscribe("/mavros/local_position/pose", 1, positionCallback);
+    ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);
 
     att_ctrl_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1);
-    odom_sp_ned_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_ned", 1);
+    odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_enu", 1);
 
     ros::spin();
     return 0;

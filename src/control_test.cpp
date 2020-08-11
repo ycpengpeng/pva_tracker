@@ -51,10 +51,10 @@ void setPVA(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d a, double yaw=
 //    ROS_INFO_THROTTLE(1.0, "P x=%f, y=%f, z=%f", pva_setpoint.positions[0], pva_setpoint.positions[1], pva_setpoint.positions[2]);
 //    ROS_INFO_THROTTLE(1.0, "V x=%f, y=%f, z=%f", pva_setpoint.velocities[0], pva_setpoint.velocities[1], pva_setpoint.velocities[2]);
 //    ROS_INFO_THROTTLE(1.0, "A x=%f, y=%f, z=%f", pva_setpoint.accelerations[0], pva_setpoint.accelerations[1], pva_setpoint.accelerations[2]);
-
-    ROS_INFO("P x=%f, y=%f, z=%f", pva_setpoint.positions[0], pva_setpoint.positions[1], pva_setpoint.positions[2]);
-    ROS_INFO("V x=%f, y=%f, z=%f", pva_setpoint.velocities[0], pva_setpoint.velocities[1], pva_setpoint.velocities[2]);
-    ROS_INFO("A x=%f, y=%f, z=%f", pva_setpoint.accelerations[0], pva_setpoint.accelerations[1], pva_setpoint.accelerations[2]);
+//
+//    ROS_INFO("P x=%f, y=%f, z=%f", pva_setpoint.positions[0], pva_setpoint.positions[1], pva_setpoint.positions[2]);
+//    ROS_INFO("V x=%f, y=%f, z=%f", pva_setpoint.velocities[0], pva_setpoint.velocities[1], pva_setpoint.velocities[2]);
+//    ROS_INFO("A x=%f, y=%f, z=%f", pva_setpoint.accelerations[0], pva_setpoint.accelerations[1], pva_setpoint.accelerations[2]);
 }
 
 /** This function is to generate state to state trajectory **/
@@ -127,11 +127,11 @@ void compute_circular_traj(const double r, const double vel, const Eigen::Vector
 
     v(0) = -vel*sin(theta);
     v(1) = vel*cos(theta);
-    v(2) = 0;
+    v(2) = 0.0;
 
     a(0) = -vel*vel/r*cos(theta);
     a(1) = -vel*vel/r*sin(theta);
-    a(2) = 0;
+    a(2) = 0.0;
 }
 
 
@@ -166,7 +166,7 @@ int main(int argc, char** argv) {
     ros::Time last_request = ros::Time::now();
 
     /// Take off with constant acceleration
-    double take_off_height = 1.0;
+    double take_off_height = 2.0;
     double take_off_acc = 1.0;
 
     double take_off_time_half = sqrt(take_off_height/take_off_acc);
@@ -174,6 +174,8 @@ int main(int argc, char** argv) {
     double take_off_send_times = take_off_time_half / delt_t * 2;
     int counter = 0;
     Vector3d recorded_takeoff_position(current_p(0), current_p(1), current_p(2));
+
+    double yaw_set = 0.0;
 
     ROS_INFO("Arm and takeoff");
     while(ros::ok()){
@@ -197,8 +199,10 @@ int main(int argc, char** argv) {
 
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
+
+
         if(current_state.mode != "OFFBOARD" || !current_state.armed){
-            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), M_PI);
+            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
         }else{
             counter ++;
             double z_sp, vz_sp;
@@ -207,7 +211,7 @@ int main(int argc, char** argv) {
                 vz_sp = counter*delt_t*take_off_acc;
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
                 Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), M_PI);
+                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
 
             }else if(counter < take_off_send_times){
                 double t_this = (counter-take_off_send_times/2)*delt_t;
@@ -216,11 +220,11 @@ int main(int argc, char** argv) {
 
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
                 Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), M_PI);
+                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
 
             }else{
                 Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
-                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), M_PI);
+                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
                 counter --;
             }
         }
@@ -236,14 +240,14 @@ int main(int argc, char** argv) {
 
 
     /** Take off complete. Go to a point with minimum jerk trajectory **/
-    double circle_radius = 2;
+    double circle_radius = 1.8;
 
     MatrixXd p_t, v_t, a_t;
     Eigen::VectorXd t_vector;
     Vector3d v0(0.0, 0.0, 0.0);
     Vector3d a0(0.0, 0.0, 0.0);
 
-    Vector3d pf(circle_radius, 0, take_off_height);
+    Vector3d pf(circle_radius, -circle_radius, take_off_height);
     Vector3d vf(0, 0, 0);
     Vector3d af(0, 0, 0);
 
@@ -251,17 +255,17 @@ int main(int argc, char** argv) {
 
     for(int i=0; i<t_vector.size(); i++)
     {
-        setPVA(p_t.row(i), v_t.row(i), Vector3d::Zero());// a_t.row(i));
+        setPVA(p_t.row(i), v_t.row(i), Vector3d::Zero(), yaw_set);// a_t.row(i));
         loop_rate.sleep();
         ros::spinOnce();
     }
 
     while(ros::ok())
     {
-        setPVA(p_t.row(t_vector.size()-1), v_t.row(t_vector.size()-1), Vector3d::Zero());// a_t.row(i));
+        setPVA(p_t.row(t_vector.size()-1), v_t.row(t_vector.size()-1), Vector3d::Zero(), yaw_set);// a_t.row(i));
         Vector3d last_sp_p = p_t.row(t_vector.size()-1);
         Vector3d delt_p = last_sp_p - current_p;
-        if(delt_p.norm() < 0.2){
+        if(delt_p.norm() < 1.0){
             ROS_WARN("Align Complete!");
             break;
         }
@@ -270,13 +274,32 @@ int main(int argc, char** argv) {
         ros::spinOnce();
     }
 
+    /** Accelerate period **/
+    double circle_speed = 5.0;
+    double acc_t_total = 2 * circle_radius / circle_speed;
+    int acc_times = acc_t_total / delt_t;
+    double acc_a_value = circle_speed * circle_speed / 2 / circle_radius;
+    for(int i=0; i<acc_times; i++){
+        Eigen::Vector3d p, v ,a;
+
+        p << circle_radius, -circle_radius + 0.5 * acc_a_value * (i * delt_t) * (i * delt_t), take_off_height;
+        v << 0.0, acc_a_value * i * delt_t, 0.0;
+        a << 0.0, acc_a_value, 0.0;
+        setPVA(p, v, a, yaw_set);
+
+        loop_rate.sleep();
+        ros::spinOnce();
+    }
+    ROS_WARN("Accelerate Complete!");
+
+
     /** Now draw circle **/
-    Vector3d circle_p0 = current_p;
+    Vector3d circle_p0(circle_radius, 0, take_off_height);
     double init_t = 0.0;
     while(ros::ok()){
         Eigen::Vector3d p, v ,a;
-        compute_circular_traj(circle_radius, 5.0, circle_p0, init_t, p, v, a);
-        setPVA(p, v, a);//a_t.row(last_index));
+        compute_circular_traj(circle_radius, circle_speed, circle_p0, init_t, p, v, a);
+        setPVA(p, v, a, yaw_set);//a_t.row(last_index));
 
         init_t += delt_t;
         loop_rate.sleep();

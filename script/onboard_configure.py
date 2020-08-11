@@ -46,6 +46,7 @@ if __name__ == '__main__':
         for i in range(20):
             try:
                 data = serial.read_all()
+                print(data)
                 if abs(float(data) - check_flag) < 0.01:
                     receive_flag = True
                     received_check_flag = check_flag;
