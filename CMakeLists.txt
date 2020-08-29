@@ -35,8 +35,8 @@ add_executable(tracker src/tracker.cpp)
 target_link_libraries(tracker ${catkin_LIBRARIES})
 add_dependencies(tracker ${PROJECT_NAME}_gencfg)
 
-add_executable(control_test src/control_test.cpp)
-target_link_libraries(control_test ${catkin_LIBRARIES})
+add_executable(sim_control_test src/sim_control_test.cpp)
+target_link_libraries(sim_control_test ${catkin_LIBRARIES})
 
-add_executable(up_control_test src/up_control_test.cpp)
-target_link_libraries(up_control_test ${catkin_LIBRARIES})
+add_executable(real_control_test src/real_control_test.cpp)
+target_link_libraries(real_control_test ${catkin_LIBRARIES})

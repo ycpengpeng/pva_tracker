@@ -61,7 +61,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 
     /// NWU frame to ENU frame
     planned_p << -msg->positions[1], msg->positions[0], msg->positions[2];
-    planned_yaw = msg->positions[3];
+    planned_yaw = msg->positions[3] + M_PI/2.0;
     planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
     planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];
 
@@ -101,6 +101,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
         return;
     }
 
+
     /**Core code**/
     Vector3d delt_p_error = p_error - p_error_last;
     Vector3d delt_v_error = v_error - v_error_last;
@@ -114,6 +115,11 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
             vectorElementMultiply(p_error, position_error_p) + vectorElementMultiply(v_error, velocity_error_p) +
             vectorElementMultiply(delt_p_error, position_error_d) + vectorElementMultiply(delt_v_error, velocity_error_d) +
             vectorElementMultiply(p_error_accumulate, position_error_i) + vectorElementMultiply(v_error_accumulate, velocity_error_i);
+
+    // Set a maximum acceleration feedforward value given by position and velocity error.
+    for(int i=0; i<3; i++){
+        if(fabs(a_fb(i)) > 5.0) a_fb(i) = 5.0 * a_fb(i) / fabs(a_fb(i));
+    }
 
     p_error_last = p_error;
     v_error_last = v_error;

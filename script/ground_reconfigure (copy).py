@@ -152,7 +152,7 @@ class Q_Window(QWidget):
             # Waiting for Feedback
             update_succeed = False
             for i in range(20):
-                data = self.serial.read_all()
+                data = self.serial.readline()
                 try:
                     if data != '':
                         if abs(float(data) - check_flag) < 0.01:
