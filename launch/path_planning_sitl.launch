@@ -1,0 +1,14 @@
+<launch>
+
+	<!-- Turtlesim Node-->
+	<node pkg="pva_tracker" type="pub_zuan_quan" name="pub_zuan_quan" />
+
+	<node pkg="pva_tracker" type="plan_zuan_quan" name="plan_zuan_quan" output="screen"/>
+		<!--rosparam file="/home/pengpeng/catkin_ws/src/pva_tracker/cfg/pengpeng.yaml" command="load"/-->
+	<node pkg="pva_tracker" type="tracker" name="tracker" />
+
+
+
+
+
+</launch>

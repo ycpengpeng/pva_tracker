@@ -22,11 +22,14 @@ void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
     /// ENU frame to NWU
     current_p << msg->pose.position.y, -msg->pose.position.x, msg->pose.position.z;
 
+    //ROS_INFO("X:%f Y:%f  Z:%f",-current_p(0),current_p(1),current_p(2));
 }
+
 
 void stateCallback(const mavros_msgs::State::ConstPtr &msg)
 {
     current_state = *msg;
+
 }
 
 
@@ -137,7 +140,7 @@ void compute_circular_traj(const double r, const double vel, const Eigen::Vector
 
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "control");
+    ros::init(argc, argv, "hover");
     ros::NodeHandle nh;
 
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
@@ -149,6 +152,8 @@ int main(int argc, char** argv) {
             ("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
+
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
 
     const int LOOPRATE = 40;
     ros::Rate loop_rate(LOOPRATE);
@@ -199,111 +204,49 @@ int main(int argc, char** argv) {
         }
 
 
-
-
-
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
 
-
-        if(current_state.mode != "OFFBOARD" || !current_state.armed){
-            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-        }else{
-            counter ++;
-            double z_sp, vz_sp;
-            if(counter < take_off_send_times / 2){
-                z_sp = 0.5*take_off_acc*counter*delt_t*counter*delt_t;
-                vz_sp = counter*delt_t*take_off_acc;
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
-                Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
-
-            }else if(counter < take_off_send_times){
-                double t_this = (counter-take_off_send_times/2)*delt_t;
-                z_sp = take_off_send_times/2*delt_t*take_off_acc*t_this - 0.5*take_off_acc*t_this*t_this;
-                vz_sp = take_off_send_times/2*delt_t*take_off_acc - take_off_acc*t_this;
-
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
-                Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
-
-            }else{
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
-                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-                counter --;
-            }
-        }
-
-        if(current_p(2) > take_off_height-0.05){
-            ROS_WARN("Takeoff Complete!");
+        static unsigned int count=0;
+        count++;
+        if(count>1000)
+        {
             break;
         }
+        double theta=120.0/180.0*3.14;
+        geometry_msgs::PoseStamped pose;
+        pose.pose.position.x = 0;
+        pose.pose.position.y = 0;
+        pose.pose.position.z =0.5;
+        pose.pose.orientation.w=1;
+//        ROS_INFO("theta:%f",theta);
+//        ROS_INFO("W:%f",pose.pose.orientation.w);
+        pose.pose.orientation.x=-0.0;
+        pose.pose.orientation.y=0;
+        pose.pose.orientation.z=0;
+        local_pos_pub.publish(pose);
 
-        loop_rate.sleep();
         ros::spinOnce();
+        loop_rate.sleep();
+
     }
 
 
     /** Take off complete. Go to a point with minimum jerk trajectory **/
-    double circle_radius = 1.8;
-
-    MatrixXd p_t, v_t, a_t;
-    Eigen::VectorXd t_vector;
-    Vector3d v0(0.0, 0.0, 0.0);
-    Vector3d a0(0.0, 0.0, 0.0);
-
-    Vector3d pf(circle_radius, -circle_radius, take_off_height);
-    Vector3d vf(0, 0, 0);
-    Vector3d af(0, 0, 0);
-
-    motion_primitives(current_p, v0, a0, pf, vf, af, 3.0, delt_t, p_t, v_t, a_t, t_vector);
-
-    for(int i=0; i<t_vector.size(); i++)
-    {
-        setPVA(p_t.row(i), v_t.row(i), Vector3d::Zero(), yaw_set);// a_t.row(i));
-        loop_rate.sleep();
-        ros::spinOnce();
-    }
-
-    while(ros::ok())
-    {
-        setPVA(p_t.row(t_vector.size()-1), v_t.row(t_vector.size()-1), Vector3d::Zero(), yaw_set);// a_t.row(i));
-        Vector3d last_sp_p = p_t.row(t_vector.size()-1);
-        Vector3d delt_p = last_sp_p - current_p;
-        if(delt_p.norm() < 1.0){
-            ROS_WARN("Align Complete!");
-            break;
-        }
-
-        loop_rate.sleep();
-        ros::spinOnce();
-    }
-
-    /** Accelerate period **/
-    double circle_speed = 5.0;
-    double acc_t_total = 2 * circle_radius / circle_speed;
-    int acc_times = acc_t_total / delt_t;
-    double acc_a_value = circle_speed * circle_speed / 2 / circle_radius;
-    for(int i=0; i<acc_times; i++){
-        Eigen::Vector3d p, v ,a;
-
-        p << circle_radius, -circle_radius + 0.5 * acc_a_value * (i * delt_t) * (i * delt_t), take_off_height;
-        v << 0.0, acc_a_value * i * delt_t, 0.0;
-        a << 0.0, acc_a_value, 0.0;
-        setPVA(p, v, a, yaw_set);
-
-        loop_rate.sleep();
-        ros::spinOnce();
-    }
-    ROS_WARN("Accelerate Complete!");
 
 
     /** Now draw circle **/
-    Vector3d circle_p0(circle_radius, 0, take_off_height);
+
     double init_t = 0.0;
-    while(ros::ok()){
-        Eigen::Vector3d p, v ,a;
-        compute_circular_traj(circle_radius, circle_speed, circle_p0, init_t, p, v, a);
+    ROS_INFO("HOVER!!");
+    while(ros::ok())
+    {
+//        Eigen::Vector3d p, v ,a;
+//        compute_circular_traj(circle_radius, circle_speed, circle_p0, init_t, p, v, a);
+
+        Eigen::Vector3d p(0,0,1);
+        Eigen::Vector3d v(0,0,0);
+        Eigen::Vector3d a(0,0,0);
         setPVA(p, v, a, yaw_set);//a_t.row(last_index));
 
         init_t += delt_t;

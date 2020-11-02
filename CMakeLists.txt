@@ -20,7 +20,8 @@ catkin_package()
 include_directories(
   ${catkin_INCLUDE_DIRS}
   "../../devel/include"
-  "include"
+
+	include/plan_zuan_quan
 )
 
 find_package(Eigen3 REQUIRED)
@@ -40,3 +41,13 @@ target_link_libraries(sim_control_test ${catkin_LIBRARIES})
 
 add_executable(real_control_test src/real_control_test.cpp)
 target_link_libraries(real_control_test ${catkin_LIBRARIES})
+
+add_executable(hover src/hover.cpp)
+target_link_libraries(hover ${catkin_LIBRARIES})
+
+
+add_executable(plan_zuan_quan src/plan_zuan_quan.cpp)
+target_link_libraries(plan_zuan_quan ${catkin_LIBRARIES})
+
+add_executable(pub_zuan_quan src/pub_zuan_quan.cpp)
+target_link_libraries(pub_zuan_quan ${catkin_LIBRARIES})

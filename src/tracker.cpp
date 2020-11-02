@@ -38,6 +38,7 @@ Vector3d current_v;
 Quaterniond current_att;
 ros::Publisher att_ctrl_pub, odom_sp_enu_pub;
 double thrust_factor;
+Quaterniond _q(1,0,0,0);
 
 Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
 {
@@ -60,10 +61,10 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     mavros_msgs::AttitudeTarget att_setpoint;
 
     /// NWU frame to ENU frame
-    planned_p << -msg->positions[1], msg->positions[0], msg->positions[2];
-    planned_yaw = msg->positions[3] + M_PI/2.0;
-    planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
-    planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];
+    planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
+    planned_yaw = msg->positions[3] ;
+    planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
+    planned_a << -msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
 
 //    planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
 //    planned_yaw = msg->positions[3];
@@ -140,6 +141,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     Quaterniond yaw_quat(cos(planned_yaw/2.0), att_des_norm(0)*sin(planned_yaw/2.0),
             att_des_norm(1)*sin(planned_yaw/2.0),att_des_norm(2)*sin(planned_yaw/2.0));
     att_des_q = yaw_quat * att_des_q;
+    att_des_q=_q.inverse()*att_des_q*_q;
 
     //Calculate thrust
     double thrust_des = a_des.norm() * thrust_factor;  //a_des.dot(att_current_vector) * THRUST_FACTOR
