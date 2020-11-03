@@ -28,16 +28,18 @@
 #include <cstdint>
 
 #define PI 3.1415926
+#define number 10
 using namespace Eigen;
 
 mavros_msgs::State current_state;
 
-Matrix<double, 4, 3> planned_p;
 
-Matrix<double, 4, 3> planned_v;
+Matrix<double, number, 3> planned_p;
+
+Matrix<double, number, 3> planned_v;
 
 Vector3d planned_a(0,0,0);
-Eigen::Vector4d planned_yaw;
+Matrix<double,number,1> planned_yaw;
 ros::Publisher zuan_quan_point_pub;
 
 
@@ -79,25 +81,47 @@ int main(int argc, char **argv)
 
     //ROS_INFO("QQQQ");
 
-    planned_p << -1.5,1.0,1.8,
-            -2,1.0,1.8,
-            -4.2,2.5,1.8,
-            -6.2,2.5,1.8;
+    planned_p << -2.0,1.0,1.7,
+            -3.0,1.0,1.7,
+            -4.7,2.5,1.7,
+            -5.7,2.5,1.7,
+            -6.7,1.5,1.7,
+            -7.7,1.5,1.7,
+            -9.0,-2.5,1.7,
+            -10.0,-2.5,1.7,
+            -13.1,-2.25,1.7,
+            -13.9,-1.75,1.7;
+
 
     //ROS_INFO("planned_p(0):%f",planned_p(0));
-    planned_v<<-1,0,0,
-            -1,0,0,
-            -1,0,0,
+    planned_v<<0,0,0,
+            0,0,0,
+            0,0,0,
+            -0.0,-0.0,0,
+            -0.0,0,0,
+            -0.0,-0.0,0,
+            -0.0,0,0,
+            0,0,0,
+            0,0,0,
             0,0,0;
 
-    planned_yaw<<180.0/180.0*PI,180.0/180*PI,180.0/180*PI,180.0/180*PI;
+    planned_yaw<<180.0/180.0*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                180.0/180*PI,
+                150.0/180*PI,
+                150.0/180*PI;
 
-    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 10, state_cb);
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
+    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 1, state_cb);
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 1);
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
-    zuan_quan_point_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 10);
+    zuan_quan_point_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 1);
 
     ros::Rate rate(40.0);
 
@@ -169,6 +193,7 @@ int main(int argc, char **argv)
 
         nh.getParam("int_param", quan_num);
        // ROS_INFO("quan_num:%d",quan_num);
+
 
         set_zuan_quan_point(planned_p.row(quan_num),planned_v.row(quan_num),planned_a,planned_yaw(quan_num));
 

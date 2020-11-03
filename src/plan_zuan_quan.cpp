@@ -6,7 +6,7 @@
 
 using namespace Eigen;
 
-
+int COUNT_QUAN=1;
 mavros_msgs::State current_state;
 ros::Publisher pva_pub;
 
@@ -36,6 +36,9 @@ ros::Time last_time;
 
 mavros_msgs::AttitudeTarget att_setpoint;
 ros::Publisher att_ctrl_pub;
+ros::Publisher odom_sp_enu_pub;
+ros::Publisher path_pub;
+
 unsigned int t_number=0;     //离散点的数量
 
 
@@ -43,7 +46,11 @@ void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
 /*    /// ENU frame to NWU
     current_p << msg->pose.position.y, -msg->pose.position.x, msg->pose.position.z;*/
+    static ros::Time position_cb_time=ros::Time::now();
 
+
+    //ROS_INFO("duration:   %f",ros::Time::now().toSec()-position_cb_time.toSec());
+    position_cb_time=ros::Time::now();
     current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
     current_att.w() = msg->pose.orientation.w;
     current_att.x() = msg->pose.orientation.x;
@@ -51,6 +58,9 @@ void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
     current_att.z() = msg->pose.orientation.z;
 
     current_att=_q*current_att*_q.inverse();
+
+
+
 //ROS_INFO("X:%f Y:%f  Z:%f",-current_p(0),current_p(1),current_p(2));
 }
 
@@ -85,20 +95,43 @@ void motion_primitives_with_table(Vector3d p0,Vector3d v0,Vector3d a0,Vector3d p
 
 void zuan_quan_set_point_cb(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 {
+    //ros::Time tmp=ros::Time::now();
+
+
     planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
+
 
     if(last_planned_p(0)==planned_p(0)&&last_planned_p(1)==planned_p(1)&&last_planned_p(2)==planned_p(2))
     {
         return;
     }
+
+    //ROS_INFO("planned_p(0)  %f  planned_p(1)  %f  planned_p(2)   %f",planned_p(0),planned_p(1),planned_p(2));
     planned_yaw = msg->positions[3];
     planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
     planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
     //ROS_INFO("planned_a %f %f %f",planned_a(0),planned_a(1),planned_a(2));
+    static bool init=1;
+    if(init==0)
+    {
+        current_p=p_t.row(t_number-1);
+        current_v=v_t.row(t_number-1);
+        current_a=a_t.row(t_number-1);
+
+    }
+    init=0;
+
+    nav_msgs::Odometry path_position;
+    path_position.header.stamp = ros::Time::now();
+    path_position.pose.pose.position.y=current_p(0);
+    path_pub.publish(path_position);
 
     motion_primitives_with_table(current_p,current_v,current_a,planned_p,planned_v,planned_a,t_number,planned_yaw);
     last_planned_p=planned_p;
     I=0;
+    COUNT_QUAN=-COUNT_QUAN;
+   // ROS_INFO("planned_p(0)  %f  planned_p(1)  %f  planned_p(2)   %f",planned_p(0),planned_p(1),planned_p(2));
+    //ROS_INFO("duration:   %f",ros::Time::now().toSec()-tmp.toSec());
 }
 
 void motion_primitives_with_table(Vector3d p0,Vector3d v0,Vector3d a0,Vector3d pf,Vector3d vf,Vector3d af,unsigned int &t_num,
@@ -123,6 +156,7 @@ void motion_primitives_with_table(Vector3d p0,Vector3d v0,Vector3d a0,Vector3d p
 
     //ROS_INFO("T:%f",T);
     t_num=T/delta_t;  //number of dots
+    //ROS_INFO("computer:t_number:%d",t_num);
     //ROS_INFO("t_num:%d   qqq",t_num);
     p_t = Eigen::MatrixXd::Zero(t_num, 3);
     v_t = Eigen::MatrixXd::Zero(t_num, 3);
@@ -170,6 +204,20 @@ void motion_primitives_with_table(Vector3d p0,Vector3d v0,Vector3d a0,Vector3d p
 void setPVA(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d a, double yaw=0.0)
 {
     trajectory_msgs::JointTrajectoryPoint pva_setpoint;
+    static double last_send_px=0;
+
+    if(p(0)-last_send_px>0.5)
+    {
+        ROS_INFO("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+        ROS_INFO("now p(0):%f",p(0));
+        ROS_INFO("last_send_px:%f",last_send_px);
+        ROS_INFO("planned_p(0):%f",planned_p(0));
+        ROS_INFO("NOW I:%d",I);
+        ROS_INFO("NOW T_NUMBBER:%d",t_number);
+//        ROS_INFO("current_p(0):%f",current())
+        ROS_INFO("AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA");
+
+    }
 
     pva_setpoint.positions.push_back(p(0)); //x
     pva_setpoint.positions.push_back(p(1)); //y
@@ -184,7 +232,28 @@ void setPVA(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d a, double yaw=
     pva_setpoint.accelerations.push_back(a(1));
     pva_setpoint.accelerations.push_back(a(2));
 
+
+
+    /// Publish to record in rosbag
+    nav_msgs::Odometry odom_sp_enu;
+    odom_sp_enu.header.stamp = ros::Time::now();
+    odom_sp_enu.pose.pose.position.x = p(0);
+    odom_sp_enu.pose.pose.position.y = p(1);
+    odom_sp_enu.pose.pose.position.z = p(2);
+    odom_sp_enu.twist.twist.linear.x = v(0);
+    odom_sp_enu.twist.twist.linear.y = v(1);
+    odom_sp_enu.twist.twist.linear.z = v(2);
+    odom_sp_enu_pub.publish(odom_sp_enu);
+
+//    nav_msgs::Odometry path_position;
+//    path_position.header.stamp = ros::Time::now();
+//    path_position.pose.pose.position.x=current_p(0);
+//
+//    path_pub.publish(path_position);
+
+
     pva_pub.publish(pva_setpoint);
+    last_send_px=p(0);
 
 //    ROS_INFO_THROTTLE(1.0, "P x=%f, y=%f, z=%f", pva_setpoint.positions[0], pva_setpoint.positions[1], pva_setpoint.positions[2]);
 //    ROS_INFO_THROTTLE(1.0, "V x=%f, y=%f, z=%f", pva_setpoint.velocities[0], pva_setpoint.velocities[1], pva_setpoint.velocities[2]);
@@ -203,23 +272,26 @@ int main(int argc, char** argv)
 {
     ros::init(argc, argv, "plan_zuan_quan");
     ros::NodeHandle nh;
-    table->csv2pva_table("/home/pengpeng/Desktop/p3-2_v3_a4_res0-1.csv");
+    table->csv2pva_table("/home/pengpeng/Desktop/p3_v1-5_a3_res0-1.csv");
 
     ros::Rate loop_rate(LOOPRATE);
 
-    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 10, stateCallback);
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 10, positionCallback);
+    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 1, positionCallback);
 
-    pva_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/pva_setpoint", 10);
+    pva_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/pva_setpoint", 1);
 
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 10);
-    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 10, velocity_sub_cb);
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 1);
+    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 1, velocity_sub_cb);
 
-    ros::Subscriber traj_point_sub = nh.subscribe<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 10, zuan_quan_set_point_cb);
+    ros::Subscriber traj_point_sub = nh.subscribe<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 1, zuan_quan_set_point_cb);
 
+    ros::Publisher velocity_pub=nh.advertise<geometry_msgs::Twist>("mavros/setpoint_velocity/cmd_vel_unstamped", 1);
+    odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_enu", 1);
+    path_pub=nh.advertise<nav_msgs::Odometry>("/path", 1);
 
     // wait for FCU connection
     while(ros::ok() && !current_state.connected){
@@ -265,7 +337,7 @@ int main(int argc, char** argv)
         geometry_msgs::PoseStamped pose;
         pose.pose.position.x = 0;
         pose.pose.position.y = 0;
-        pose.pose.position.z =0.5;
+        pose.pose.position.z =0.8;
 
         double theta=180.0/180.0*3.14;
         pose.pose.orientation.w=cos(theta/2);
@@ -273,8 +345,7 @@ int main(int argc, char** argv)
         pose.pose.orientation.y=0;
         pose.pose.orientation.z=sin(theta/2);
         local_pos_pub.publish(pose);
-//        ROS_INFO("theta:%f",theta);
-//        ROS_INFO("W:%f",pose.pose.orientation.w);
+
 
         ros::spinOnce();
         loop_rate.sleep();
@@ -285,24 +356,61 @@ int main(int argc, char** argv)
 
     while(ros::ok())
     {
+        ros::spinOnce();
+        ros::spinOnce();
+        ros::spinOnce();
+        //ROS_INFO("X:%f",current_p(0));
         static unsigned char quan_num = 0;
-        for(I=0;I<t_number;I++)
+        static unsigned int last_t_number=0;
+        for(I=0;I<t_number-1;I++)
         {
+            //ROS_INFO("QQQQ");
+            //ROS_INFO("X:%f",current_p(0));
             setPVA(p_t.row(I), v_t.row(I), a_t.row(I), yaw_t(I));//a_t.row(last_index));
-            ros::spinOnce();
+            //ROS_INFO("planned_p(0)  %f  planned_p(1)  %f  planned_p(2)   %f",planned_p(0),planned_p(1),planned_p(2));
+
+            //ros::spinOnce();
             loop_rate.sleep();
         }
-        if(I==t_number&&t_number!=0)
+        if(I==t_number-1&&t_number!=0)
         {
             quan_num++;
-            if(quan_num==4)
+            if(quan_num==10)
             {
                 break;
             }
-            ROS_INFO("next_quan_num:%d",quan_num);
+            //ROS_INFO("next_quan_num:%d",quan_num);
             nh.setParam("int_param", quan_num);
         }
+        last_t_number=t_number;
         ros::spinOnce();
+        unsigned int qu=0;
+        ros::Time tmp=ros::Time::now();
+        while(t_number!=0&&I!=0)
+        {
+//            Vector3d p_tmp;
+//            p_tmp=p_t.row(t_number)+v_t.row(t_number);
+//            geometry_msgs::Twist velocity;
+//            velocity.linear.x=v_t(t_number-1,0)/2;
+//            velocity.linear.y=v_t(t_number-1,1)/2;
+//            velocity.linear.z=v_t(t_number-1,2)/2;
+//            velocity_pub.publish(velocity);
+           // ROS_INFO("X:%f",current_p(0));
+            qu++;
+            if(t_number<50)
+            {
+               // ROS_INFO("IUYYYYWUYUWYEUWYYYEEE%%%%%%%%%YYYYYYY");
+
+            }
+           // ROS_INFO("WWWW");
+            setPVA(p_t.row(t_number-1), v_t.row(t_number-1), a_t.row(t_number-1), yaw_t(t_number-1));//a_t.row(last_index));
+            //ROS_INFO("------!!!!!!!!!!!!!!!!!!!-----------------------------------------------");
+            ros::spinOnce();
+        }
+        //ROS_INFO("duration:   %f",ros::Time::now().toSec()-tmp.toSec());
+        //ROS_INFO("QU:%d",qu);
+
+
         //loop_rate.sleep();
     }
 
@@ -310,11 +418,11 @@ int main(int argc, char** argv)
     while(ros::ok())
     {
         geometry_msgs::PoseStamped pose;
-        pose.pose.position.x = -6.2;
-        pose.pose.position.y = 2.5;
-        pose.pose.position.z =1.8;
+        pose.pose.position.x = planned_p(0);
+        pose.pose.position.y = planned_p(1);
+        pose.pose.position.z =planned_p(2);
 
-        double theta=180.0/180.0*3.14;
+        double theta=150.0/180.0*3.14;
         pose.pose.orientation.w=cos(theta/2);
         pose.pose.orientation.x=-0.0;
         pose.pose.orientation.y=0;

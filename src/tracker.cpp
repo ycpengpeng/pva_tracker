@@ -73,15 +73,15 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 
 
     /// Publish to record in rosbag
-    nav_msgs::Odometry odom_sp_enu;
-    odom_sp_enu.header.stamp = ros::Time::now();
-    odom_sp_enu.pose.pose.position.x = planned_p(0);
-    odom_sp_enu.pose.pose.position.y = planned_p(1);
-    odom_sp_enu.pose.pose.position.z = planned_p(2);
-    odom_sp_enu.twist.twist.linear.x = planned_v(0);
-    odom_sp_enu.twist.twist.linear.y = planned_v(1);
-    odom_sp_enu.twist.twist.linear.z = planned_v(2);
-    odom_sp_enu_pub.publish(odom_sp_enu);
+//    nav_msgs::Odometry odom_sp_enu;
+//    odom_sp_enu.header.stamp = ros::Time::now();
+//    odom_sp_enu.pose.pose.position.x = planned_p(0);
+//    odom_sp_enu.pose.pose.position.y = planned_p(1);
+//    odom_sp_enu.pose.pose.position.z = planned_p(2);
+//    odom_sp_enu.twist.twist.linear.x = planned_v(0);
+//    odom_sp_enu.twist.twist.linear.y = planned_v(1);
+//    odom_sp_enu.twist.twist.linear.z = planned_v(2);
+//    odom_sp_enu_pub.publish(odom_sp_enu);
 
     /// Calculate desired thrust and attitude
     Vector3d p_error = planned_p - current_p;

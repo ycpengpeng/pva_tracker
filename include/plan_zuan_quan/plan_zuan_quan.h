@@ -7,12 +7,17 @@
 
 #include <ros/ros.h>
 #include <geometry_msgs/PoseStamped.h>
+
 #include <geometry_msgs/TwistStamped.h>
+#include <geometry_msgs/Twist.h>
 #include <mavros_msgs/CommandBool.h>
 #include <mavros_msgs/SetMode.h>
 #include <mavros_msgs/State.h>
 #include <mavros_msgs/AttitudeTarget.h>
 #include <mavros_msgs/OpticalFlowRad.h>
+#include <nav_msgs/Odometry.h>
+#include <nav_msgs/Path.h>
+
 #include <Eigen/Eigen>
 #include <Eigen/Geometry>
 #include <Eigen/Core>
@@ -28,7 +33,7 @@
 #include <cstdint>
 
 #define PI 3.1415926
-#define LOOPRATE 40.0
+#define LOOPRATE 40
 #define delta_t 0.025
 
 

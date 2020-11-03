@@ -181,7 +181,7 @@ int main(int argc, char** argv) {
     int counter = 0;
     Vector3d recorded_takeoff_position(current_p(0), current_p(1), current_p(2));
 
-    double yaw_set = 0.0;
+    double yaw_set = 3.1415926;
 
     ROS_INFO("Arm and ta1111keoff");
     while(ros::ok()){
@@ -213,17 +213,17 @@ int main(int argc, char** argv) {
         {
             break;
         }
-        double theta=120.0/180.0*3.14;
+        double theta=180.0/180.0*3.14;
         geometry_msgs::PoseStamped pose;
         pose.pose.position.x = 0;
         pose.pose.position.y = 0;
-        pose.pose.position.z =0.5;
-        pose.pose.orientation.w=1;
+        pose.pose.position.z =3;
+        pose.pose.orientation.w=cos(theta/2);
 //        ROS_INFO("theta:%f",theta);
 //        ROS_INFO("W:%f",pose.pose.orientation.w);
         pose.pose.orientation.x=-0.0;
         pose.pose.orientation.y=0;
-        pose.pose.orientation.z=0;
+        pose.pose.orientation.z=sin(theta/2);
         local_pos_pub.publish(pose);
 
         ros::spinOnce();
@@ -238,16 +238,63 @@ int main(int argc, char** argv) {
     /** Now draw circle **/
 
     double init_t = 0.0;
+    int mode=1;
     ROS_INFO("HOVER!!");
     while(ros::ok())
     {
 //        Eigen::Vector3d p, v ,a;
 //        compute_circular_traj(circle_radius, circle_speed, circle_p0, init_t, p, v, a);
+        static int count=0;
+        count++;
+        if(count==800)
+        {
+            mode=-mode;
+            count=0;
+        }
+        if(mode==1)
+        {
+            Eigen::Vector3d p(3,0,3);
+            Eigen::Vector3d v(0,0,0);
+            Eigen::Vector3d a(0,0,0);
+            yaw_set=90.0/180*3.1415926;
+            setPVA(p, v, a, yaw_set);//a_t.row(last_index));
 
-        Eigen::Vector3d p(0,0,1);
-        Eigen::Vector3d v(0,0,0);
-        Eigen::Vector3d a(0,0,0);
-        setPVA(p, v, a, yaw_set);//a_t.row(last_index));
+//            geometry_msgs::PoseStamped pose;
+//            pose.pose.position.x = 3;
+//            pose.pose.position.y = 0;
+//            pose.pose.position.z =3;
+//            double theta=180.0/180.0*3.14;
+//            pose.pose.orientation.w=cos(theta/2);
+////        ROS_INFO("theta:%f",theta);
+////        ROS_INFO("W:%f",pose.pose.orientation.w);
+//            pose.pose.orientation.x=-0.0;
+//            pose.pose.orientation.y=0;
+//            pose.pose.orientation.z=sin(theta/2);
+//            local_pos_pub.publish(pose);
+
+        }
+        else {
+            Eigen::Vector3d p(0, 0, 3);
+            Eigen::Vector3d v(0, 0, 0);
+            Eigen::Vector3d a(0, 0, 0);
+            yaw_set = 180.0 / 180 * 3.1415926;
+            setPVA(p, v, a, yaw_set);//a_t.row(last_index));
+
+//            geometry_msgs::PoseStamped pose;
+//            pose.pose.position.x = 6;
+//            pose.pose.position.y = 0;
+//            pose.pose.position.z =3;
+//            double theta=180.0/180.0*3.14;
+//            pose.pose.orientation.w=cos(theta/2);
+////        ROS_INFO("theta:%f",theta);
+////        ROS_INFO("W:%f",pose.pose.orientation.w);
+//            pose.pose.orientation.x=-0.0;
+//            pose.pose.orientation.y=0;
+//            pose.pose.orientation.z=sin(theta/2);
+//            local_pos_pub.publish(pose);
+//        }
+        }
+
 
         init_t += delt_t;
         loop_rate.sleep();
