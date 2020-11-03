@@ -119,7 +119,7 @@ void zuan_quan_set_point_cb(const trajectory_msgs::JointTrajectoryPoint::ConstPt
         current_a=a_t.row(t_number-1);
 
     }
-    init=0;
+    init=1;
 
     nav_msgs::Odometry path_position;
     path_position.header.stamp = ros::Time::now();
@@ -357,8 +357,11 @@ int main(int argc, char** argv)
     while(ros::ok())
     {
         ros::spinOnce();
-        ros::spinOnce();
-        ros::spinOnce();
+//        ros::spinOnce();
+//        ros::spinOnce();
+//        ros::spinOnce();
+//        ros::spinOnce();
+//        ros::spinOnce();
         //ROS_INFO("X:%f",current_p(0));
         static unsigned char quan_num = 0;
         static unsigned int last_t_number=0;
