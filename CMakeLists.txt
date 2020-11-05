@@ -51,3 +51,6 @@ target_link_libraries(plan_zuan_quan ${catkin_LIBRARIES})
 
 add_executable(pub_zuan_quan src/pub_zuan_quan.cpp)
 target_link_libraries(pub_zuan_quan ${catkin_LIBRARIES})
+
+add_executable(test_take_off src/test_take_off.cpp)
+target_link_libraries(test_take_off ${catkin_LIBRARIES})

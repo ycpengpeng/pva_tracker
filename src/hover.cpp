@@ -253,10 +253,10 @@ int main(int argc, char** argv) {
         }
         if(mode==1)
         {
-            Eigen::Vector3d p(3,0,3);
+            Eigen::Vector3d p(0,0,3);
             Eigen::Vector3d v(0,0,0);
             Eigen::Vector3d a(0,0,0);
-            yaw_set=90.0/180*3.1415926;
+            yaw_set=180.0/180*3.1415926;
             setPVA(p, v, a, yaw_set);//a_t.row(last_index));
 
 //            geometry_msgs::PoseStamped pose;
@@ -274,7 +274,7 @@ int main(int argc, char** argv) {
 
         }
         else {
-            Eigen::Vector3d p(0, 0, 3);
+            Eigen::Vector3d p(0, 0, 2);
             Eigen::Vector3d v(0, 0, 0);
             Eigen::Vector3d a(0, 0, 0);
             yaw_set = 180.0 / 180 * 3.1415926;
