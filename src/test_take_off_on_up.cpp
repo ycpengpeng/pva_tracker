@@ -66,7 +66,7 @@ void setPVA(Eigen::Vector3d p, Eigen::Vector3d v, Eigen::Vector3d a, double yaw=
 
 int main(int argc, char** argv)
 {
-    ros::init(argc, argv, "test_take_off");
+    ros::init(argc, argv, "test_take_off_on_up");
     ros::NodeHandle nh;
 
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
@@ -77,13 +77,13 @@ int main(int argc, char** argv)
     ros::ServiceClient arming_client = nh.serviceClient<mavros_msgs::CommandBool>("mavros/cmd/arming");
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>("mavros/set_mode");
 
-    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("/mavros/setpoint_position/local", 1);
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 1);
 
     const int LOOPRATE = 40;
     ros::Rate loop_rate(LOOPRATE);
 
-    double take_off_height = 2.0;
-    double take_off_acc = 0.5;
+    double take_off_height = 1.5;
+    double take_off_acc = 0.1;
     double take_off_time=sqrt(take_off_height/take_off_acc)*2.0;
     double delt_t = 1.0 / LOOPRATE;
     double take_off_send_times = take_off_time / delt_t;
@@ -108,27 +108,11 @@ int main(int argc, char** argv)
     int mode=0;
     double z_sp=0;
     double vz_sp=0;
-    ROS_INFO("Arm and takeoff-----------------------------");
+    ROS_INFO("Arm and ta1111keoff");
 
     while(ros::ok())
     {
-        if( current_state.mode != "OFFBOARD" &&
-            (ros::Time::now() - last_request > ros::Duration(5.0))){
-            if( set_mode_client.call(offb_set_mode) &&
-                offb_set_mode.response.mode_sent){
-                ROS_INFO("Offboard enabled");
-            }
-            last_request = ros::Time::now();
-        } else {
-            if( !current_state.armed &&
-                (ros::Time::now() - last_request > ros::Duration(5.0))){
-                if( arming_client.call(arm_cmd) &&
-                    arm_cmd.response.success){
-                    ROS_INFO("Vehicle armed");
-                }
-                last_request = ros::Time::now();
-            }
-        }
+
         if(current_state.mode != "OFFBOARD" || !current_state.armed)
         {
             ros::spinOnce();
@@ -153,7 +137,7 @@ int main(int argc, char** argv)
             {
                 ros::spinOnce();
                 take_off_position=current_p;
-                take_off_height = 2.0;
+                take_off_height = 1.5;
                 take_off_acc = 0.1;
                 take_off_time=sqrt(take_off_height/take_off_acc)*2.0;
                 take_off_send_times = take_off_time / delt_t;
@@ -210,16 +194,16 @@ int main(int argc, char** argv)
             {
                 ros::spinOnce();
                 take_off_position=current_p;
-                //ROS_INFO("Z:%f",take_off_position(2));
+               // ROS_INFO("Z:%f",take_off_position(2));
                 take_off_acc=0.1;
                 take_off_time=sqrt(take_off_position(2)/take_off_acc)*2.0;
                 take_off_send_times=take_off_time/delt_t;
-                //ROS_INFO("aaaaaaaatake_off_send_times:%f",take_off_send_times);
+               // ROS_INFO("aaaaaaaatake_off_send_times:%f",take_off_send_times);
                 counter=0;
                 take_off_init=0;
                 last_time=ros::Time::now();
             }
-            //ROS_INFO("take_off_position:%f",take_off_position);
+            //ROS_INFO("take_off_send_times:%f",take_off_send_times);
             //ROS_INFO("counter:%d",counter);
 
             if(counter < take_off_send_times / 2)
@@ -227,7 +211,7 @@ int main(int argc, char** argv)
                 //ROS_INFO("DDDDDDD");
                 z_sp = take_off_position(2)-0.5*take_off_acc*counter*delt_t*counter*delt_t;
                 vz_sp = -counter*delt_t*take_off_acc;
-                //ROS_INFO("z_sp:%f",z_sp);
+                ROS_INFO("z_sp:%f",z_sp);
                 Vector3d p_sp(take_off_position(0), take_off_position(1), z_sp);
                 Vector3d v_sp(0, 0, vz_sp);
                 setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);

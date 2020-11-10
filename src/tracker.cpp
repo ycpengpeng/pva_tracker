@@ -38,7 +38,6 @@ Vector3d current_v;
 Quaterniond current_att;
 ros::Publisher att_ctrl_pub, odom_sp_enu_pub;
 double thrust_factor;
-Quaterniond _q(1,0,0,0);
 
 Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
 {
@@ -60,19 +59,19 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 {
     mavros_msgs::AttitudeTarget att_setpoint;
 
-    /// NWU frame to ENU frame
+/*    /// NWU frame to ENU frame
+    planned_p << -msg->positions[1], msg->positions[0], msg->positions[2];
+    planned_yaw = msg->positions[3] + M_PI/2.0;
+    planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
+    planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];*/
+
     planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
-    planned_yaw = msg->positions[3] ;
+    planned_yaw = msg->positions[3];
     planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
-    planned_a << -msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
-
-//    planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
-//    planned_yaw = msg->positions[3];
-//    planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
-//    planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
+    planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
 
 
-    /// Publish to record in rosbag
+/*    /// Publish to record in rosbag
     nav_msgs::Odometry odom_sp_enu;
     odom_sp_enu.header.stamp = ros::Time::now();
     odom_sp_enu.pose.pose.position.x = planned_p(0);
@@ -81,7 +80,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     odom_sp_enu.twist.twist.linear.x = planned_v(0);
     odom_sp_enu.twist.twist.linear.y = planned_v(1);
     odom_sp_enu.twist.twist.linear.z = planned_v(2);
-    odom_sp_enu_pub.publish(odom_sp_enu);
+    odom_sp_enu_pub.publish(odom_sp_enu);*/
 
     /// Calculate desired thrust and attitude
     Vector3d p_error = planned_p - current_p;
@@ -139,9 +138,8 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 
     //add yaw
     Quaterniond yaw_quat(cos(planned_yaw/2.0), att_des_norm(0)*sin(planned_yaw/2.0),
-            att_des_norm(1)*sin(planned_yaw/2.0),att_des_norm(2)*sin(planned_yaw/2.0));
+                         att_des_norm(1)*sin(planned_yaw/2.0),att_des_norm(2)*sin(planned_yaw/2.0));
     att_des_q = yaw_quat * att_des_q;
-    att_des_q=_q.inverse()*att_des_q*_q;
 
     //Calculate thrust
     double thrust_des = a_des.norm() * thrust_factor;  //a_des.dot(att_current_vector) * THRUST_FACTOR
@@ -156,7 +154,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     att_setpoint.thrust = thrust_des;
 
     ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
-            att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
+                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
 
     att_ctrl_pub.publish(att_setpoint);
 }
@@ -207,7 +205,7 @@ int main(int argc, char** argv) {
     ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);
 
     att_ctrl_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1);
-    odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/test_take_off", 1);
+    odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_enu", 1);
 
     ros::spin();
     return 0;

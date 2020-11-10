@@ -54,3 +54,9 @@ target_link_libraries(pub_zuan_quan ${catkin_LIBRARIES})
 
 add_executable(test_take_off src/test_take_off.cpp)
 target_link_libraries(test_take_off ${catkin_LIBRARIES})
+
+add_executable(test_take_off_on_up src/test_take_off_on_up.cpp)
+target_link_libraries(test_take_off_on_up ${catkin_LIBRARIES})
+
+add_executable(hover_test_on_up src/hover_test_on_up.cpp)
+target_link_libraries(hover_test_on_up ${catkin_LIBRARIES})

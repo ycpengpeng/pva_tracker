@@ -378,7 +378,7 @@ int main(int argc, char** argv)
         if(I==t_number-1&&t_number!=0)
         {
             quan_num++;
-            if(quan_num==10)
+            if(quan_num==2)
             {
                 break;
             }
@@ -425,7 +425,7 @@ int main(int argc, char** argv)
         pose.pose.position.y = planned_p(1);
         pose.pose.position.z =planned_p(2);
 
-        double theta=150.0/180.0*3.14;
+        double theta=180.0/180.0*3.14;
         pose.pose.orientation.w=cos(theta/2);
         pose.pose.orientation.x=-0.0;
         pose.pose.orientation.y=0;
