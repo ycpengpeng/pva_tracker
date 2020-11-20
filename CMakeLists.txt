@@ -60,3 +60,6 @@ target_link_libraries(test_take_off_on_up ${catkin_LIBRARIES})
 
 add_executable(hover_test_on_up src/hover_test_on_up.cpp)
 target_link_libraries(hover_test_on_up ${catkin_LIBRARIES})
+
+add_executable(plot_pva src/plot_pva.cpp)
+target_link_libraries(plot_pva ${catkin_LIBRARIES})
