@@ -1,7 +1,8 @@
 cmake_minimum_required(VERSION 2.8.3)
 
 project(pva_tracker)
-add_compile_options(-std=c++11)
+set(CMAKE_MODULE_PATH "${CMAKE_MODULE_PATH}" "${CMAKE_CURRENT_SOURCE_DIR}/cmake")
+add_definitions(-std=c++14 -g -O1 -ftree-vectorize -march=native -pthread)
 
 find_package(catkin REQUIRED COMPONENTS
 	roscpp
@@ -63,3 +64,21 @@ target_link_libraries(hover_test_on_up ${catkin_LIBRARIES})
 
 add_executable(plot_pva src/plot_pva.cpp)
 target_link_libraries(plot_pva ${catkin_LIBRARIES})
+
+add_executable(mpc_record src/mpc_record.cpp)
+target_link_libraries(mpc_record ${catkin_LIBRARIES})
+
+add_executable(tiny_dnn_test1 src/tiny_dnn_test1.cpp)
+target_link_libraries(tiny_dnn_test1 ${catkin_LIBRARIES})
+target_include_directories(tiny_dnn_test1   PRIVATE /home/pengpeng/tiny-dnn)
+set_target_properties(tiny_dnn_test1 PROPERTIES
+		COMPILE_FLAGS "-pthread"
+		LINK_FLAGS "-pthread")
+
+
+add_executable(tiny_dnn_test2 src/tiny_dnn_test2.cpp)
+target_link_libraries(tiny_dnn_test2 ${catkin_LIBRARIES})
+target_include_directories(tiny_dnn_test2   PRIVATE /home/pengpeng/tiny-dnn)
+set_target_properties(tiny_dnn_test2 PROPERTIES
+		COMPILE_FLAGS "-pthread"
+		LINK_FLAGS "-pthread")

@@ -20,8 +20,7 @@ ros::Publisher pva_pub;
 void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
     /// ENU frame to NWU
-    current_p << msg->pose.position.y, -msg->pose.position.x, msg->pose.position.z;
-
+    current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
 }
 
 void stateCallback(const mavros_msgs::State::ConstPtr &msg)
@@ -150,7 +149,7 @@ int main(int argc, char** argv) {
     ros::ServiceClient set_mode_client = nh.serviceClient<mavros_msgs::SetMode>
             ("mavros/set_mode");
 
-    const int LOOPRATE = 40;
+    const int LOOPRATE = 30;
     ros::Rate loop_rate(LOOPRATE);
 
     // wait for FCU connection
@@ -178,7 +177,7 @@ int main(int argc, char** argv) {
 
     double yaw_set = 0.0;
 
-    ROS_INFO("Arm and ta1111keoff");
+    ROS_INFO("Arm and takeoff");
     while(ros::ok()){
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
@@ -197,10 +196,6 @@ int main(int argc, char** argv) {
                 last_request = ros::Time::now();
             }
         }
-
-
-
-
 
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
@@ -235,7 +230,7 @@ int main(int argc, char** argv) {
         }
 
         if(current_p(2) > take_off_height-0.05){
-            ROS_WARN("Takeoff Complete!");
+            ROS_INFO_ONCE("Takeoff Complete!");
             break;
         }
 
@@ -258,18 +253,30 @@ int main(int argc, char** argv) {
 
     motion_primitives(current_p, v0, a0, pf, vf, af, 3.0, delt_t, p_t, v_t, a_t, t_vector);
 
+
+
+
+
+    ROS_INFO("AAAAA");
     for(int i=0; i<t_vector.size(); i++)
     {
         setPVA(p_t.row(i), v_t.row(i), Vector3d::Zero(), yaw_set);// a_t.row(i));
         loop_rate.sleep();
         ros::spinOnce();
     }
+    ROS_INFO("SSSSSSS");
 
     while(ros::ok())
     {
         setPVA(p_t.row(t_vector.size()-1), v_t.row(t_vector.size()-1), Vector3d::Zero(), yaw_set);// a_t.row(i));
         Vector3d last_sp_p = p_t.row(t_vector.size()-1);
         Vector3d delt_p = last_sp_p - current_p;
+
+        ROS_INFO_THROTTLE(2,"last_sp_p(0):   %f , last_sp_p(1):   %f,last_sp_p(2):   %f \n",last_sp_p(0),last_sp_p(1),last_sp_p(1));
+        ROS_INFO_THROTTLE(2,"current_p(0):   %f , current_p(1):   %f,current_p(2):   %f \n",current_p(0),current_p(1),current_p(1));
+        ROS_INFO_THROTTLE(2,"delt_p.norm():   %f\n",delt_p.norm());
+//        ROS_INFO_THROTTLE(2,"delt_p.norm():   %f\n",delt_p.norm());
+
         if(delt_p.norm() < 1.0){
             ROS_WARN("Align Complete!");
             break;
@@ -280,7 +287,7 @@ int main(int argc, char** argv) {
     }
 
     /** Accelerate period **/
-    double circle_speed = 5.0;
+    double circle_speed = 3.0;
     double acc_t_total = 2 * circle_radius / circle_speed;
     int acc_times = acc_t_total / delt_t;
     double acc_a_value = circle_speed * circle_speed / 2 / circle_radius;
