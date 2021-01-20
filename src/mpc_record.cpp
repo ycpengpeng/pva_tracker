@@ -41,6 +41,12 @@ Vector3d planned_p;
 Vector3d planned_v;
 Vector3d planned_a;
 
+Vector3d last_planned_p(0,0,0);
+Vector3d last_planned_v(0,0,0);
+Vector3d last_planned_a(0,0,0);
+
+
+
 double planned_yaw;
 Vector4d set_orientation;
 double set_thrust;
@@ -54,10 +60,11 @@ std::ofstream outFile;
 Eigen::Quaterniond euler2quaternion_eigen(float roll, float pitch, float yaw)
 {
     Eigen::Quaterniond temp;
-    temp.w() = cos(roll/2)*cos(pitch/2)*cos(yaw/2) + sin(roll/2)*sin(pitch/2)*sin(yaw/2);
     temp.x() = sin(roll/2)*cos(pitch/2)*cos(yaw/2) - cos(roll/2)*sin(pitch/2)*sin(yaw/2);
     temp.y() = cos(roll/2)*sin(pitch/2)*cos(yaw/2) + sin(roll/2)*cos(pitch/2)*sin(yaw/2);
     temp.z() = cos(roll/2)*cos(pitch/2)*sin(yaw/2) - sin(roll/2)*sin(pitch/2)*cos(yaw/2);
+    temp.w() = cos(roll/2)*cos(pitch/2)*cos(yaw/2) + sin(roll/2)*sin(pitch/2)*sin(yaw/2);
+
     return temp;
 }
 
@@ -127,15 +134,18 @@ void att_ctrl_cb(const mavros_msgs::AttitudeTarget::ConstPtr &msg)
             << ','<<current_v(0)<< ','<<current_v(1)<< ','<<current_v(2)
             << ','<<current_a(0)<< ','<<current_a(1)<< ','<<current_a(2)
 
-            << ','<<current_p(0)-planned_p(0) << ','<<current_p(1)-planned_p(1)<<','<<current_p(2)-planned_p(2)
-            << ','<<current_v(0)-planned_v(0)<< ','<<current_v(1)-planned_v(1)<< ','<<current_v(2)-planned_v(2)
-            << ','<<current_a(0)-planned_a(0)<< ','<<current_a(1)-planned_a(1)<< ','<<current_a(2)-planned_a(2)
+            << ','<<current_p(0)-last_planned_p(0)<< ','<<current_p(1)-last_planned_p(1)<<','<<current_p(2)-last_planned_p(2)
+            << ','<<current_v(0)-last_planned_v(0)<< ','<<current_v(1)-last_planned_v(1)<< ','<<current_v(2)-last_planned_v(2)
+            << ','<<current_a(0)-last_planned_a(0)<< ','<<current_a(1)-last_planned_a(1)<< ','<<current_a(2)-last_planned_a(2)
 
             << ','<<set_orientation(0)<< ','<<set_orientation(1)<< ','<<set_orientation(2)<<','<<set_orientation(3)
 
             << ','<<euler(0)<< ','<<euler(1)<< ','<<euler(2)
             << ','<<set_thrust
             << '\n';
+    last_planned_p=planned_p;
+    last_planned_v=planned_v;
+    last_planned_a=planned_a;
 
 }
 
@@ -171,7 +181,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "mpc_record");
     ros::NodeHandle nh;
 
-    outFile.open("mpc_record_test.csv", std::ios::out);
+    outFile.open("mpc_record_v=4.csv", std::ios::out);
     outFile.trunc;
 
 /*    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("mavros/state", 1, state_cb);

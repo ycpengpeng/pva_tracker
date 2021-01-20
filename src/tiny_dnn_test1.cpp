@@ -79,13 +79,11 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
 
 
     //把 pitch角取相反数
-/*
     for(int i=0;i<data.size();i++)
     {
-        data[i][32]=-
-        min=std::min(min,data[i][j]);
+        data[i][32]=-data[i][32];
+
     }
-*/
 
     //归一化 将数据映射到到 0 到 1 之间
     for(int j=0;j<data[0].size();j++)
@@ -97,7 +95,7 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
             max=std::max(max,data[i][j]);
             min=std::min(min,data[i][j]);
         }
-        cout<<"列序号："<<j<<"max: "<<max<<" min:"<<min<<endl;
+        cout<<"列序号："<<j<<" max: "<<max<<" min:"<<min<<" max-min+0.01:"<<max-min+0.01<<endl;
         for(int i=0;i<data.size();i++)
         {
             data[i][j]=(data[i][j]-min)/(max-min+0.01);
@@ -117,24 +115,23 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
         tiny_dnn::vec_t train_target_vector;
         for(int i=0;i<data[0].size();i++)
         {
-            if(i>=27&&i<=30)
+            if(i>=31&&i<=34)
             {
-                train_data_vector.push_back(data[time-1][i]);//上一时刻的给定姿态四元数
+
+                train_data_vector.push_back(data[time-1][i]);//上５时刻的给定姿态欧拉角 和推力
+
             }
-            if(i==34)
-            {
-                train_data_vector.push_back(data[time-1][i]);//上一时刻的给定推力
-            }
+
         }
         for(int i=0;i<data[0].size();i++)
         {
-            if(i>=18&&i<=30)
+            if(i>=18&&i<=26)
             {
-                train_data_vector.push_back(data[time][i]);//这一时刻的位置 速度 加速度与规划值的差值 姿态四元数
+                train_data_vector.push_back(data[time][i]);//这一时刻的位置 速度 加速度与规划值的差值
             }
-            if(i==34)
+            if(i>=31&&i<=34)
             {
-                train_data_vector.push_back(data[time][i]);//这一时刻的给定推力
+                train_data_vector.push_back(data[time][i]);//这一时刻的姿态欧拉角和给定推力
             }
 
             if(i>=18&&i<=26)
@@ -163,7 +160,7 @@ static void construct_net(tiny_dnn::network<tiny_dnn::sequential> &nn,
     using tiny_dnn::core::connection_table;
     using padding = tiny_dnn::padding;
 
-    nn << fc(19, 64, true,backend_type)
+    nn << fc(17, 64, true,backend_type)
        << sigmoid()
        << fc(64, 256, true,backend_type)
        << sigmoid()

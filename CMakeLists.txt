@@ -82,3 +82,10 @@ target_include_directories(tiny_dnn_test2   PRIVATE /home/pengpeng/tiny-dnn)
 set_target_properties(tiny_dnn_test2 PROPERTIES
 		COMPILE_FLAGS "-pthread"
 		LINK_FLAGS "-pthread")
+
+add_executable(mpc_tracker src/mpc_tracker.cpp)
+target_link_libraries(mpc_tracker ${catkin_LIBRARIES})
+target_include_directories(mpc_tracker   PRIVATE /home/pengpeng/tiny-dnn)
+set_target_properties(mpc_tracker PROPERTIES
+		COMPILE_FLAGS "-pthread"
+		LINK_FLAGS "-pthread")

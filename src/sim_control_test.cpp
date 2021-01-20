@@ -287,7 +287,7 @@ int main(int argc, char** argv) {
     }
 
     /** Accelerate period **/
-    double circle_speed = 3.0;
+    double circle_speed = 4.0;
     double acc_t_total = 2 * circle_radius / circle_speed;
     int acc_times = acc_t_total / delt_t;
     double acc_a_value = circle_speed * circle_speed / 2 / circle_radius;

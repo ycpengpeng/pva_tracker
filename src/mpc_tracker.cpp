@@ -1,0 +1,286 @@
+
+
+#include <ros/ros.h>
+#include <trajectory_msgs/JointTrajectoryPoint.h>
+#include <Eigen/Eigen>
+#include <geometry_msgs/PoseStamped.h>
+#include <geometry_msgs/TwistStamped.h>
+#include <mavros_msgs/AttitudeTarget.h>
+#include <math.h>
+#include <dynamic_reconfigure/server.h>
+#include <pva_tracker/PVA_TrackerConfig.h>
+#include <nav_msgs/Odometry.h>
+
+
+#include "tiny_dnn/tiny_dnn.h"
+#define GRAVITATIONAL_ACC 9.81
+
+using namespace Eigen;
+
+// Coefficients
+Vector3d position_error_p;
+Vector3d position_error_d;
+Vector3d position_error_i;
+Vector3d velocity_error_p;
+Vector3d velocity_error_d;
+Vector3d velocity_error_i;
+
+double p_i_acc_error_limit;
+double v_i_acc_error_limit;
+
+// Global Variables
+Vector3d planned_p;
+Vector3d planned_v;
+Vector3d planned_a;
+double planned_yaw;
+Vector3d current_p;
+Vector3d current_v;
+Vector3d current_a;
+
+Quaterniond current_att;
+ros::Publisher att_ctrl_pub, odom_sp_enu_pub;
+double thrust_factor;
+std::vector<std::vector<float>> input_queue;
+tiny_dnn::network<tiny_dnn::sequential> nn;
+Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
+{
+    Vector3d result;
+    result << v1(0)*v2(0), v1(1)*v2(1), v1(2)*v2(2);
+    return result;
+}
+
+void vector3dLimit(Vector3d &v, double limit)  ///limit should be positive
+{
+    if(limit > 0){
+        for(int i=0; i<3; i++){
+            v(i) = fabs(v(i)) > limit ? (v(i) > 0 ? limit : -limit) : v(i);
+        }
+    }
+}
+template <typename T>
+void store_data3d(T &store_data, Vector3d vector3d)
+{
+    for (int i=0;i<3;i++)
+    {
+        store_data.push_back(vector3d[i]);
+
+    }
+
+
+}
+
+void accel2quater(Vector3d a_des,Quaterniond &att_des_q, double &thrust_des)
+{
+    Vector3d att_des_norm = a_des / a_des.norm();
+
+    Quaterniond z_w_quat(0, 0, 0, 1.0);
+    Quaterniond att_current_vector_quat = current_att * z_w_quat * current_att.inverse();
+    Vector3d current_att_vector(att_current_vector_quat.x(), att_current_vector_quat.y(), att_current_vector_quat.z());
+    Vector3d z_w_norm(0, 0, 1.0);
+//    Quaterniond att_des_q = Quaterniond::FromTwoVectors(current_att_vector, att_des_norm);
+    att_des_q = Quaterniond::FromTwoVectors(z_w_norm, att_des_norm);
+
+    //add yaw
+    Quaterniond yaw_quat(cos(planned_yaw/2.0), att_des_norm(0)*sin(planned_yaw/2.0),
+                         att_des_norm(1)*sin(planned_yaw/2.0),att_des_norm(2)*sin(planned_yaw/2.0));
+    att_des_q = yaw_quat * att_des_q;
+
+    //Calculate thrust
+    thrust_des = a_des.norm() * thrust_factor;  //a_des.dot(att_current_vector) * THRUST_FACTOR
+
+}
+
+
+
+
+void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
+{
+    mavros_msgs::AttitudeTarget att_setpoint;
+
+/*    /// NWU frame to ENU frame
+    planned_p << -msg->positions[1], msg->positions[0], msg->positions[2];
+    planned_yaw = msg->positions[3] + M_PI/2.0;
+    planned_v << -msg->velocities[1], msg->velocities[0], msg->velocities[2];
+    planned_a << -msg->accelerations[1], msg->accelerations[0], msg->accelerations[2];*/
+
+    planned_p << msg->positions[0], msg->positions[1], msg->positions[2];
+    planned_yaw = msg->positions[3];
+    planned_v << msg->velocities[0], msg->velocities[1], msg->velocities[2];
+    planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
+
+
+/*    /// Publish to record in rosbag
+    nav_msgs::Odometry odom_sp_enu;
+    odom_sp_enu.header.stamp = ros::Time::now();
+    odom_sp_enu.pose.pose.position.x = planned_p(0);
+    odom_sp_enu.pose.pose.position.y = planned_p(1);
+    odom_sp_enu.pose.pose.position.z = planned_p(2);
+    odom_sp_enu.twist.twist.linear.x = planned_v(0);
+    odom_sp_enu.twist.twist.linear.y = planned_v(1);
+    odom_sp_enu.twist.twist.linear.z = planned_v(2);
+    odom_sp_enu_pub.publish(odom_sp_enu);*/
+
+    /// Calculate desired thrust and attitude
+    Vector3d p_error = planned_p - current_p;
+    Vector3d v_error = planned_v - current_v;
+
+    static Vector3d p_error_last;
+    static Vector3d v_error_last;
+    static Vector3d p_error_accumulate;
+    static Vector3d v_error_accumulate;
+    static bool if_init = true;
+
+    if(if_init){
+        if_init = false;
+        p_error_last = p_error;
+        v_error_last = v_error;
+        p_error_accumulate = p_error;
+        v_error_accumulate = v_error;
+        return;
+    }
+
+
+    /**Core code**/
+    Vector3d delt_p_error = p_error - p_error_last;
+    Vector3d delt_v_error = v_error - v_error_last;
+
+    p_error_accumulate += p_error;
+    v_error_accumulate += v_error;
+    vector3dLimit(p_error_accumulate, p_i_acc_error_limit);
+    vector3dLimit(v_error_accumulate, v_i_acc_error_limit);
+
+    Vector3d a_fb =   /// PID
+            vectorElementMultiply(p_error, position_error_p) + vectorElementMultiply(v_error, velocity_error_p) +
+            vectorElementMultiply(delt_p_error, position_error_d) + vectorElementMultiply(delt_v_error, velocity_error_d) +
+            vectorElementMultiply(p_error_accumulate, position_error_i) + vectorElementMultiply(v_error_accumulate, velocity_error_i);
+
+    p_error_last = p_error;
+    v_error_last = v_error;
+
+    Quaterniond att_des_q;
+    double thrust_des;
+
+    // Set a maximum acceleration feedforward value given by position and velocity error.
+    for(int i=0; i<3; i++){
+        if(fabs(a_fb(i)) > 5.0) a_fb(i) = 5.0 * a_fb(i) / fabs(a_fb(i));
+    }
+    Vector3d z_w_norm(0, 0, 1.0);
+    Vector3d a_des = a_fb + planned_a + GRAVITATIONAL_ACC * z_w_norm;
+    accel2quater(a_des,att_des_q,thrust_des);
+
+    tiny_dnn::vec_t nn_input;
+    for(int i=18;i<=22;i++)
+    {
+        nn_input.push_back(input_queue.back()[i]);// 0 1 2 3 4
+    }
+
+    std::vector<float> current_pva;
+    store_data3d(current_pva,current_p);
+    store_data3d(current_pva,current_v);
+    store_data3d(current_pva,current_a);
+    for(int i=0;i<9;i++)
+    {
+        nn_input.push_back(current_pva[i]-input_queue.back()[i]); // 5 6 7   8 9 10   11 12 13
+    }
+    nn_input.push_back(att_des_q.w()); // 14
+    nn_input.push_back(att_des_q.x()); // 15
+    nn_input.push_back(att_des_q.y()); // 16
+    nn_input.push_back(att_des_q.z()); // 17
+    nn_input.push_back(thrust_des);    // 18
+
+    tiny_dnn::vec_t predict=nn.predict(nn_input);
+
+    Vector3d k(0.1,0.1,0.1);
+    a_des(0)+=predict[6]*k(0);
+    a_des(1)+=predict[7]*k(1);
+    a_des(2)+=predict[8]*k(2);
+
+    accel2quater(a_des,att_des_q,thrust_des);
+
+
+
+    att_setpoint.header.stamp = ros::Time::now();
+    att_setpoint.orientation.w = att_des_q.w();
+    att_setpoint.orientation.x = att_des_q.x();
+    att_setpoint.orientation.y = att_des_q.y();
+    att_setpoint.orientation.z = att_des_q.z();
+    att_setpoint.thrust = thrust_des;
+
+    std::vector<float> store_data;
+    store_data3d(store_data,planned_p);  // 0 1 2
+    store_data3d(store_data,planned_v); // 3 4 5
+    store_data3d(store_data,planned_a);  // 6 7 8
+    store_data3d(store_data,current_p);  //9 10 11
+    store_data3d(store_data,current_v);  // 12 13 14
+    store_data3d(store_data,current_a);  //15 16 17
+    store_data.push_back(att_des_q.w());  //18
+    store_data.push_back(att_des_q.x());  // 19
+    store_data.push_back(att_des_q.y());  //20
+    store_data.push_back(att_des_q.z());  //21
+    store_data.push_back(thrust_des);    //22
+
+    input_queue.push_back(store_data);
+    if(input_queue.size()>10)
+    {
+        input_queue.erase(input_queue.begin());
+    }
+
+    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
+                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
+
+    att_ctrl_pub.publish(att_setpoint);
+}
+
+void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
+{
+    /// ENU frame
+    current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+    current_att.w() = msg->pose.orientation.w;
+    current_att.x() = msg->pose.orientation.x;
+    current_att.y() = msg->pose.orientation.y;
+    current_att.z() = msg->pose.orientation.z;
+}
+
+void velocityCallback(const geometry_msgs::TwistStamped::ConstPtr &msg)
+{
+    /// ENU frame
+    current_v << msg->twist.linear.x, msg->twist.linear.y, msg->twist.linear.z;
+}
+
+
+void configureCallback(tracker::PVA_TrackerConfig &config, uint32_t level) {
+    position_error_p << config.position_p_xy, config.position_p_xy, config.position_p_z;
+    position_error_d << config.position_d_xy, config.position_d_xy, config.position_d_z;
+    position_error_i << config.position_i_xy, config.position_i_xy, config.position_i_z;
+    p_i_acc_error_limit = config.p_i_acc_error_limit;
+
+    velocity_error_p << config.velocity_p_xy, config.velocity_p_xy, config.velocity_p_z;
+    velocity_error_d << config.velocity_d_xy, config.velocity_d_xy, config.velocity_d_z;
+    velocity_error_i << config.velocity_i_xy, config.velocity_i_xy, config.velocity_i_z;
+    v_i_acc_error_limit = config.v_i_acc_error_limit;
+    thrust_factor = config.hover_thrust_factor;
+}
+
+
+int main(int argc, char** argv) {
+    ros::init(argc, argv, "mpc_tracker");
+
+    dynamic_reconfigure::Server<tracker::PVA_TrackerConfig> server;
+    dynamic_reconfigure::Server<tracker::PVA_TrackerConfig>::CallbackType f;
+    f = boost::bind(&configureCallback, _1, _2);
+    server.setCallback(f);
+
+    ros::NodeHandle nh;
+
+    nn.load("/home/pengpeng/catkin_ws/src/pva_tracker/cmake-build-debug/devel/lib/pva_tracker/LeNet-model2");
+
+    ros::Subscriber pva_sub = nh.subscribe("/pva_setpoint", 1, pvaCallback);
+    ros::Subscriber position_sub = nh.subscribe("/mavros/local_position/pose", 1, positionCallback);
+    ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);
+
+    att_ctrl_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1);
+    odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_enu", 1);
+
+    ros::spin();
+    return 0;
+}
