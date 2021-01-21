@@ -48,7 +48,7 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
     std::vector<std::vector<float>>data;
 
 
-    ifstream fin("/home/pengpeng/catkin_ws/src/pva_tracker/mpc_record_test.csv"); //打开文件流操作
+    ifstream fin("/home/pengpeng/catkin_ws/mpc_record_v=4.csv"); //打开文件流操作
     string line;
     while (getline(fin, line))   //整行读取，换行符“\n”区分，遇到文件尾标志eof终止读取
     {
@@ -78,14 +78,8 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
 //    test_labels={10,200};
 
 
-    //把 pitch角取相反数
-    for(int i=0;i<data.size();i++)
-    {
-        data[i][32]=-data[i][32];
-
-    }
-
     //归一化 将数据映射到到 0 到 1 之间
+    cout<<data[0].size()<<endl;
     for(int j=0;j<data[0].size();j++)
     {
         float min=1000;
@@ -109,37 +103,39 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
     cout<<"data.size():"<<data.size()<<endl;
     cout<<"data[0].size():"<<data[0].size()<<endl;
 
-    for (int time=1;time<data.size()-1;time++)
+    for (int time=6;time<data.size()-1;time++)
     {
         tiny_dnn::vec_t train_data_vector;
         tiny_dnn::vec_t train_target_vector;
-        for(int i=0;i<data[0].size();i++)
+
+        for(int last=5;last>=0;last--)
         {
-            if(i>=31&&i<=34)
+            for(int i=0;i<data[0].size();i++)
             {
+                if(i>=18&&i<=26)
+                {
+                    train_data_vector.push_back(data[time-last][i]); //位置　速度　加速度差值
+                }
+                if(i>=31&&i<=34)
+                {
+                    train_data_vector.push_back(data[time-last][i]); //角度　和推力输入
 
-                train_data_vector.push_back(data[time-1][i]);//上５时刻的给定姿态欧拉角 和推力
-
+                }
             }
 
         }
         for(int i=0;i<data[0].size();i++)
         {
-            if(i>=18&&i<=26)
-            {
-                train_data_vector.push_back(data[time][i]);//这一时刻的位置 速度 加速度与规划值的差值
-            }
-            if(i>=31&&i<=34)
-            {
-                train_data_vector.push_back(data[time][i]);//这一时刻的姿态欧拉角和给定推力
-            }
-
             if(i>=18&&i<=26)
             {
                 train_target_vector.push_back(data[time+1][i]); //下一时刻 的 位置 速度 加速度与规划值的差值
+
             }
 
+
         }
+
+
         train_data.push_back(train_data_vector);
         train_target.push_back(train_target_vector);
 
@@ -160,16 +156,12 @@ static void construct_net(tiny_dnn::network<tiny_dnn::sequential> &nn,
     using tiny_dnn::core::connection_table;
     using padding = tiny_dnn::padding;
 
-    nn << fc(17, 64, true,backend_type)
+    nn << fc(78, 128, true,backend_type)
        << sigmoid()
-       << fc(64, 256, true,backend_type)
+       << fc(128, 256, true,backend_type)
        << sigmoid()
-        << fc(256, 256, true,backend_type)
-        << sigmoid()
        << fc(256, 9, true,backend_type)
        << sigmoid();
-
-
 }
 
 
@@ -217,7 +209,7 @@ static void train_lenet(const std::string &data_dir_path,
         iEpoch++;
         if (iEpoch % 100) return;
 
-        double loss = nn.get_loss<tiny_dnn::mse>(train_data, train_target);
+        double loss = nn.get_loss<tiny_dnn::mse_pp>(train_data, train_target);
         ROS_WARN("====================================");
         std::cout << "epoch=" << iEpoch << "/" << n_train_epochs << " loss=" << loss
                   << std::endl;
@@ -245,14 +237,14 @@ static void train_lenet(const std::string &data_dir_path,
     n_minibatch=train_data.size();
     n_train_epochs=5000;
 
-    nn.fit<tiny_dnn::mse>(optimizer, train_data, train_target, n_minibatch, n_train_epochs, []() {},
+    nn.fit<tiny_dnn::mse_pp>(optimizer, train_data, train_target, n_minibatch, n_train_epochs, []() {},
                            on_enumerate_epoch);
 
     std::cout << std::endl
               << "Training finished, now computing prediction results:"
               << std::endl;
 
-    nn.save("LeNet_eluer_-model");
+    nn.save("LeNet_eluer_-model_v=4_last_5");
 
 /*    tiny_dnn::vec_t predict=nn.predict(train_data[100]);
     cout<<"predict of train_data[100]: "<<endl;
