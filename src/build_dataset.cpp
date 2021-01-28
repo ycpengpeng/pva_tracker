@@ -75,11 +75,12 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
     std::vector<std::string> file;
     std::ofstream outFile;
 
-    std::string data_file="random_fly_new/dataset_square_fly.csv";
+    std::string data_file="random_fly_new_new/dataset_random_fly_new_new_for_test.csv";
 
     int LAST=3;
 
-    file.push_back("/home/pengpeng/catkin_ws/random_fly_new/mpc_record_square_fly.csv");
+    file.push_back("/home/pengpeng/catkin_ws/random_fly_new/mpc_record_random_fly_new_for_test.csv");
+
 
 
 
@@ -103,11 +104,17 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
             data.push_back(data_vector);
         }
     }
-    //cout<<data[data.size()-1][0]<<endl;
 
-    //归一化 将数据映射到到 0 到 1 之间
+    //把pitch反过来
+    for(int i=0;i<data.size();i++)
+    {
+        data[i][32]=-data[i][32];
+    }
 
-/*
+
+
+
+/* //归一化 将数据映射到到 0 到 1 之间
     cout<<data[0].size()<<endl;
     for(int j=0;j<data[0].size();j++)
     {

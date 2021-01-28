@@ -19,6 +19,7 @@ import multiprocessing as mp
 import time
 from pva_tracker.msg import input
 
+
 def nnCallback(msg):
 
     time_start = time.time()
@@ -30,8 +31,8 @@ def nnCallback(msg):
 
     delta_t=0.01
 
-    for j in range(0):
-        print("python compute")
+    for j in range(5):
+        #print("python compute")
         new_ten1=x_data.clone()
         new_ten1[36]=new_ten1[36]+delta_t    #36 37 38 39
 
@@ -68,7 +69,7 @@ def nnCallback(msg):
             second_deri = (torch.sum(new_prediction_square[2 * i + 1,0 :2]) - 2 * torch.sum(new_prediction_square[2 * i, 0:2])
                            + torch.sum(new_prediction_square[2 * i - 1, 0:2])) / delta_t / delta_t
 
-            x_data[36 + i] = x_data[ 36 + i] - 0.1 * first_deri / second_deri
+            x_data[36 + i] = x_data[ 36 + i] - 1.5 * first_deri / second_deri
 
 
     update_msg=input()
@@ -106,7 +107,7 @@ Net = torch.nn.Sequential(
     torch.nn.Linear(128,6),
     torch.nn.Tanh(),
 )
-Net.load_state_dict(torch.load("/home/pengpeng/catkin_ws/random_fly_new/net_4999.pkl", map_location='cpu'))
+Net.load_state_dict(torch.load("/home/pengpeng/catkin_ws/random_fly_new_new/net_4999.pkl", map_location='cpu'))
 
 
 rospy.Subscriber("/nn_compute", input, nnCallback)

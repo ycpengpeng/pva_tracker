@@ -62,7 +62,8 @@ torch::jit::script::Module module;
 using namespace std;
 
 float max_min[]={1.7747, 1.6724, 4.8957, 7.2604, 5.7810, 6.1120,3.79378,  2.71257 , 3.22697,  1.729003};
-float min_arr[]={-0.924959 ,-0.911663 ,-0.593314 ,-3.45101  ,-2.77456 , -2.49199 , -2.1737, -1.21307 , -1.11182 ,  0.164217};
+float min_arr[]={-0.924959 ,-0.911663 ,-0.593314 ,-3.45101  ,-2.77456 , -2.49199 , -2.1737, -1.4895  , -1.11182 ,  0.164217};
+
 
 Vector3d a_des;
 Quaterniond att_des_q;
@@ -115,8 +116,7 @@ Eigen::Vector3d quaternion2euler_eigen(float x, float y, float z, float w)
 {
     Eigen::Vector3d temp;//roll pitch yaw
     temp.x() = atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y));
-    // I use ENU coordinate system , so I plus ' - '
-    temp.y() = asin(2.0 * (z * x - w * y));
+    temp.y() = asin(2.0 * (-z * x + w * y));
     temp.z() = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
     return temp;
 }
@@ -277,8 +277,8 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
         nn_input.push_back(euler_angle(2));
         nn_input.push_back(thrust_des);
 
-        ROS_INFO("original roll: %f pitch:  %f yaw: %f  thrust_des: %f",nn_input[36],nn_input[37]
-        ,nn_input[38],nn_input[39]);
+//        ROS_INFO("original roll: %f pitch:  %f yaw: %f  thrust_des: %f",nn_input[36],nn_input[37]
+//        ,nn_input[38],nn_input[39]);
 
         //输入归一化
         for(int i=0;i<nn_input.size();i++)
@@ -418,7 +418,7 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     pitch=pitch*max_min[7]+min_arr[7];
     yaw=yaw*max_min[8]+min_arr[8];
     float thrust_python=thrust_raw*max_min[9]+min_arr[9];
-    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_des: %f",roll,pitch,yaw,thrust_python);
+//    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_python: %f",roll,pitch,yaw,thrust_python);
 
 
     Eigen::Quaterniond att_des_python=euler2quaternion_eigen(roll,pitch,yaw);
@@ -441,7 +441,7 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     Vector3d euler_angle;
     euler_angle=quaternion2euler_eigen(att_des_python.x(),att_des_python.y(),att_des_python.z(),att_des_python.w());
 
-    ROS_INFO("after compute roll: %f pitch:  %f yaw: %f  ",euler_angle(0),euler_angle(1),euler_angle(2));
+//    ROS_INFO("after compute roll: %f pitch:  %f yaw: %f  ",euler_angle(0),euler_angle(1),euler_angle(2));
 
 
 
@@ -456,8 +456,8 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
         input_queue.erase(input_queue.begin());
     }
 
-    //ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
-                     // att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
+/*    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
+                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);*/
 
     att_ctrl_pub.publish(att_setpoint);
 
