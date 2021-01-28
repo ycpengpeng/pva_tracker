@@ -16,6 +16,7 @@
 #define GRAVITATIONAL_ACC 9.81
 
 using namespace Eigen;
+using namespace std;
 
 // Coefficients
 Vector3d position_error_p;
@@ -38,6 +39,30 @@ Vector3d current_v;
 Quaterniond current_att;
 ros::Publisher att_ctrl_pub, odom_sp_enu_pub;
 double thrust_factor;
+
+
+Eigen::Quaterniond euler2quaternion_eigen(float roll, float pitch, float yaw)
+{
+    Eigen::Quaterniond temp;
+    temp.x() = sin(roll/2)*cos(pitch/2)*cos(yaw/2) - cos(roll/2)*sin(pitch/2)*sin(yaw/2);
+    temp.y() = cos(roll/2)*sin(pitch/2)*cos(yaw/2) + sin(roll/2)*cos(pitch/2)*sin(yaw/2);
+    temp.z() = cos(roll/2)*cos(pitch/2)*sin(yaw/2) - sin(roll/2)*sin(pitch/2)*cos(yaw/2);
+    temp.w() = cos(roll/2)*cos(pitch/2)*cos(yaw/2) + sin(roll/2)*sin(pitch/2)*sin(yaw/2);
+
+    return temp;
+}
+
+Eigen::Vector3d quaternion2euler_eigen(float x, float y, float z, float w)
+{
+    Eigen::Vector3d temp;//roll pitch yaw
+    temp.x() = atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y));
+
+    temp.y() = asin(2.0 * (-z * x + w * y));
+    temp.z() = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
+    return temp;
+}
+
+
 
 Vector3d vectorElementMultiply(Vector3d v1, Vector3d v2)
 {
@@ -146,6 +171,10 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 
     /**End of Core code**/
 
+    Vector3d euler_angle=quaternion2euler_eigen(att_des_q.x(),att_des_q.y(),att_des_q.z(),att_des_q.w());
+
+    att_des_q=euler2quaternion_eigen(euler_angle(0),euler_angle(1),euler_angle(2));
+
     att_setpoint.header.stamp = ros::Time::now();
     att_setpoint.orientation.w = att_des_q.w();
     att_setpoint.orientation.x = att_des_q.x();
@@ -153,8 +182,8 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     att_setpoint.orientation.z = att_des_q.z();
     att_setpoint.thrust = thrust_des;
 
-/*    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
-                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);*/
+    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
+                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
 
     att_ctrl_pub.publish(att_setpoint);
 }

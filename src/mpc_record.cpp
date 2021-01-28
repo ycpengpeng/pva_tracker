@@ -73,8 +73,7 @@ Eigen::Vector3d quaternion2euler_eigen(float x, float y, float z, float w)
 {
     Eigen::Vector3d temp;//roll pitch yaw
     temp.x() = atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y));
-    // I use ENU coordinate system , so I plus ' - '
-    temp.y() = asin(2.0 * (z * x - w * y));
+    temp.y() = asin(2.0 * (-z * x + w * y));
     temp.z() = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
     return temp;
 }
