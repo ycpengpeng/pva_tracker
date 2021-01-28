@@ -380,7 +380,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
 {
 
-/*    //反归一化
+    //反归一化
     //ROS_INFO_THROTTLE(2,"get message from python");
     std::vector<float> predict;
     for(int i=0;i<6;i++)
@@ -404,10 +404,10 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     a_des(2)=a_des(2)-(mpc_kpz*predict[2]+mpc_kvz*predict[5]);
     accel2quater(a_des,att_des_q,thrust_des);
 
-    accel2quater(a_des,att_des_q,thrust_des);*/
+    accel2quater(a_des,att_des_q,thrust_des);
 
 
-    float roll=msg->input[0];
+/*    float roll=msg->input[0];
     float pitch=msg->input[1];
     float yaw=msg->input[2];
     float thrust_raw=msg->input[3];
@@ -418,17 +418,17 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     pitch=pitch*max_min[7]+min_arr[7];
     yaw=yaw*max_min[8]+min_arr[8];
     float thrust_python=thrust_raw*max_min[9]+min_arr[9];
-//    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_python: %f",roll,pitch,yaw,thrust_python);
+//    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_python: %f",roll,pitch,yaw,thrust_python);*/
 
-
-    Eigen::Quaterniond att_des_python=euler2quaternion_eigen(roll,pitch,yaw);
+/*
+    Eigen::Quaterniond att_des_python=euler2quaternion_eigen(roll,pitch,yaw);*/
 
     att_setpoint.header.stamp = ros::Time::now();
-    att_setpoint.orientation.w = att_des_python.w();
-    att_setpoint.orientation.x = att_des_python.x();
-    att_setpoint.orientation.y = att_des_python.y();
-    att_setpoint.orientation.z = att_des_python.z();
-    att_setpoint.thrust = thrust_python;
+    att_setpoint.orientation.w = att_des_q.w();
+    att_setpoint.orientation.x = att_des_q.x();
+    att_setpoint.orientation.y = att_des_q.y();
+    att_setpoint.orientation.z = att_des_q.z();
+    att_setpoint.thrust = thrust_des;
 
     std::vector<float> store_data;
     store_data3d(store_data,planned_p);  // 0 1 2
@@ -439,7 +439,7 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     store_data3d(store_data,current_a);  //15 16 17
 
     Vector3d euler_angle;
-    euler_angle=quaternion2euler_eigen(att_des_python.x(),att_des_python.y(),att_des_python.z(),att_des_python.w());
+    euler_angle=quaternion2euler_eigen(att_des_q.x(),att_des_q.y(),att_des_q.z(),att_des_q.w());
 
 //    ROS_INFO("after compute roll: %f pitch:  %f yaw: %f  ",euler_angle(0),euler_angle(1),euler_angle(2));
 
@@ -448,7 +448,7 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     store_data.push_back(euler_angle(0));  //18
     store_data.push_back(euler_angle(1));  // 19
     store_data.push_back(euler_angle(2));  //20
-    store_data.push_back(thrust_python);    //21
+    store_data.push_back(thrust_des);    //21
 
     input_queue.push_back(store_data);
     if(input_queue.size()>10)
