@@ -9,14 +9,25 @@ find_package(catkin REQUIRED COMPONENTS
 	rospy
 	tf
 	dynamic_reconfigure
+	message_generation
 	)
 
 generate_dynamic_reconfigure_options(
 		cfg/pid.cfg
 		cfg/pid_ground.cfg
 )
+add_message_files(
+		FILES
+		input.msg
+)
+generate_messages(
+		DEPENDENCIES
+		std_msgs
+)
+catkin_package(
+		CATKIN_DEPENDS message_runtime
+)
 
-catkin_package()
 
 include_directories(
   ${catkin_INCLUDE_DIRS}
@@ -68,13 +79,12 @@ target_link_libraries(plot_pva ${catkin_LIBRARIES})
 add_executable(mpc_record src/mpc_record.cpp)
 target_link_libraries(mpc_record ${catkin_LIBRARIES})
 
-add_executable(tiny_dnn_test1 src/tiny_dnn_test1.cpp)
+#[[add_executable(tiny_dnn_test1 src/tiny_dnn_test1.cpp)
 target_link_libraries(tiny_dnn_test1 ${catkin_LIBRARIES})
 target_include_directories(tiny_dnn_test1   PRIVATE /home/pengpeng/tiny-dnn)
 set_target_properties(tiny_dnn_test1 PROPERTIES
 		COMPILE_FLAGS "-pthread"
-		LINK_FLAGS "-pthread")
-
+		LINK_FLAGS "-pthread")]]
 
 add_executable(tiny_dnn_test2 src/tiny_dnn_test2.cpp)
 target_link_libraries(tiny_dnn_test2 ${catkin_LIBRARIES})
@@ -83,9 +93,30 @@ set_target_properties(tiny_dnn_test2 PROPERTIES
 		COMPILE_FLAGS "-pthread"
 		LINK_FLAGS "-pthread")
 
-add_executable(mpc_tracker src/mpc_tracker.cpp)
+#[[add_executable(mpc_tracker src/mpc_tracker.cpp)
 target_link_libraries(mpc_tracker ${catkin_LIBRARIES})
 target_include_directories(mpc_tracker   PRIVATE /home/pengpeng/tiny-dnn)
 set_target_properties(mpc_tracker PROPERTIES
 		COMPILE_FLAGS "-pthread"
+		LINK_FLAGS "-pthread")]]
+
+add_executable(mpc_tracker_pytorch src/mpc_tracker_pytorch.cpp)
+target_link_libraries(mpc_tracker_pytorch ${catkin_LIBRARIES})
+set(Torch_DIR /home/pengpeng/Downloads/libtorch/share/cmake/Torch)
+find_package(Torch REQUIRED)
+target_link_libraries(mpc_tracker_pytorch ${TORCH_LIBRARIES} )
+
+
+add_executable(random_fly src/random_fly.cpp)
+target_link_libraries(random_fly ${catkin_LIBRARIES})
+
+add_executable(build_dataset src/build_dataset.cpp)
+target_link_libraries(build_dataset ${catkin_LIBRARIES})
+target_include_directories(build_dataset   PRIVATE /home/pengpeng/tiny-dnn)
+set_target_properties(build_dataset PROPERTIES
+		COMPILE_FLAGS "-pthread"
 		LINK_FLAGS "-pthread")
+
+add_executable(square_fly src/square_fly.cpp)
+target_link_libraries(square_fly ${catkin_LIBRARIES})
+

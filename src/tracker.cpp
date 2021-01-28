@@ -71,7 +71,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
 
 
-/*    /// Publish to record in rosbag
+    /// Publish to record in rosbag
     nav_msgs::Odometry odom_sp_enu;
     odom_sp_enu.header.stamp = ros::Time::now();
     odom_sp_enu.pose.pose.position.x = planned_p(0);
@@ -80,7 +80,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     odom_sp_enu.twist.twist.linear.x = planned_v(0);
     odom_sp_enu.twist.twist.linear.y = planned_v(1);
     odom_sp_enu.twist.twist.linear.z = planned_v(2);
-    odom_sp_enu_pub.publish(odom_sp_enu);*/
+    odom_sp_enu_pub.publish(odom_sp_enu);
 
     /// Calculate desired thrust and attitude
     Vector3d p_error = planned_p - current_p;
@@ -153,8 +153,8 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     att_setpoint.orientation.z = att_des_q.z();
     att_setpoint.thrust = thrust_des;
 
-    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
-                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);
+/*    ROS_INFO_THROTTLE(1.0, "Attitude Quaternion Setpoint is w=%f, x=%f, y=%f, z=%f, thrust=%f", att_setpoint.orientation.w,
+                      att_setpoint.orientation.x, att_setpoint.orientation.y, att_setpoint.orientation.z, att_setpoint.thrust);*/
 
     att_ctrl_pub.publish(att_setpoint);
 }

@@ -46,15 +46,11 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
 {
 
     std::vector<std::vector<float>>data;
-
-
     ifstream fin("/home/pengpeng/catkin_ws/mpc_record_v=4.csv"); //打开文件流操作
     string line;
     while (getline(fin, line))   //整行读取，换行符“\n”区分，遇到文件尾标志eof终止读取
     {
-        //cout <<"原始字符串："<< line << endl; //整行输出
         istringstream sin(line); //将整行字符串line读入到字符串流istringstream中
-//        vector<string> fields; //声明一个字符串向量
         string field;
         std::vector<float>data_vector;
         while (getline(sin, field, ',')) //将字符串流sin中的字符读入到field字符串中，以逗号为分隔符
@@ -65,17 +61,8 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
             sx >> x;
             data_vector.push_back(x);
         }
-
         data.push_back(data_vector);
-//        string name = Trim(fields[0]); //清除掉向量fields中第一个元素的无效字符，并赋值给变量name
-//        string age = Trim(fields[1]); //清除掉向量fields中第二个元素的无效字符，并赋值给变量age
-//        string birthday = Trim(fields[2]); //清除掉向量fields中第三个元素的无效字符，并赋值给变量birthday
-//        cout <<"处理之后的字符串："<< name << "\t" << age << "\t" << birthday << endl;
     }
-    //cout<<"data[0][0]:"<<data[0][0]<<endl;
-
-//    train_data={{1,2},{3,4}};
-//    test_labels={10,200};
 
 
     //归一化 将数据映射到到 0 到 1 之间
@@ -110,37 +97,22 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
 
         for(int last=5;last>=0;last--)
         {
-            for(int i=0;i<data[0].size();i++)
+            for(int i=18;i<=26;i++)
             {
-                if(i>=18&&i<=26)
-                {
-                    train_data_vector.push_back(data[time-last][i]); //位置　速度　加速度差值
-                }
-                if(i>=31&&i<=34)
-                {
-                    train_data_vector.push_back(data[time-last][i]); //角度　和推力输入
-
-                }
+                train_data_vector.push_back(data[time-last][i]); //位置　速度　加速度差值
             }
-
+            for(int i=31;i<=34;i++)
+            {
+                train_data_vector.push_back(data[time-last][i]); //给定的姿态 和 推力
+            }
         }
-        for(int i=0;i<data[0].size();i++)
+        for(int i=18;i<=26;i++)
         {
-            if(i>=18&&i<=26)
-            {
-                train_target_vector.push_back(data[time+1][i]); //下一时刻 的 位置 速度 加速度与规划值的差值
-
-            }
-
-
+            train_target_vector.push_back(data[time+1][i]); //下一时刻 的 位置 速度 加速度与规划值的差值
         }
-
-
         train_data.push_back(train_data_vector);
         train_target.push_back(train_target_vector);
-
     }
-
 }
 
 
