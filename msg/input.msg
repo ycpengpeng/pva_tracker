@@ -1,4 +1,7 @@
 float32[40] input
+float32 a_x
+float32 a_y
+float32 a_z
 float32 pred_x
 float32 pred_y
 float32 pred_z
