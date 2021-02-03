@@ -18,12 +18,40 @@ Quaterniond current_att;
 mavros_msgs::State current_state;
 ros::Publisher pva_pub;
 
+Vector3d current_euler;
+
+Eigen::Quaterniond euler2quaternion_eigen(float roll, float pitch, float yaw)
+{
+    Eigen::Quaterniond temp;
+    temp.x() = sin(roll/2)*cos(pitch/2)*cos(yaw/2) - cos(roll/2)*sin(pitch/2)*sin(yaw/2);
+    temp.y() = cos(roll/2)*sin(pitch/2)*cos(yaw/2) + sin(roll/2)*cos(pitch/2)*sin(yaw/2);
+    temp.z() = cos(roll/2)*cos(pitch/2)*sin(yaw/2) - sin(roll/2)*sin(pitch/2)*cos(yaw/2);
+    temp.w() = cos(roll/2)*cos(pitch/2)*cos(yaw/2) + sin(roll/2)*sin(pitch/2)*sin(yaw/2);
+
+    return temp;
+}
+
+Eigen::Vector3d quaternion2euler_eigen(float x, float y, float z, float w)
+{
+    Eigen::Vector3d temp;//roll pitch yaw
+    temp.x() = atan2(2.0 * (w * x + y * z), 1.0 - 2.0 * (x * x + y * y));
+    temp.y() = asin(2.0 * (-z * x + w * y));
+    temp.z() = atan2(2.0 * (w * z + x * y), 1.0 - 2.0 * (y * y + z * z));
+    return temp;
+}
+
+
 void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
-
+    /// ENU frame to NWU
     current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
 
-    //ROS_INFO("X:%f Y:%f  Z:%f",-current_p(0),current_p(1),current_p(2));
+    current_att.w() = msg->pose.orientation.w;
+    current_att.x() = msg->pose.orientation.x;
+    current_att.y() = msg->pose.orientation.y;
+    current_att.z() = msg->pose.orientation.z;
+
+    current_euler=quaternion2euler_eigen(current_att.x(), current_att.y(), current_att.z(), current_att.w());
 }
 
 
@@ -83,44 +111,32 @@ int main(int argc, char** argv)
     const int LOOPRATE = 40;
     ros::Rate loop_rate(LOOPRATE);
 
-    double take_off_height = 1.5;
-    double take_off_acc = 0.1;
-    double take_off_time=sqrt(take_off_height/take_off_acc)*2.0;
-    double delt_t = 1.0 / LOOPRATE;
-    double take_off_send_times = take_off_time / delt_t;
-    int counter = 0;
-    int take_off_init=1;
-    double into_offb=0;
-    Vector3d take_off_position;
-    ros::Time last_time=ros::Time::now();
+
+
+    Vector3d hover_position;
+
     // wait for FCU connection
     while(ros::ok() && !current_state.connected){
         ros::spinOnce();
         loop_rate.sleep();
     }
-    mavros_msgs::SetMode offb_set_mode;
-    offb_set_mode.request.custom_mode = "OFFBOARD";
 
     mavros_msgs::CommandBool arm_cmd;
     arm_cmd.request.value = true;
-    ros::Time last_request = ros::Time::now();
     geometry_msgs::PoseStamped pose;
 
     double yaw_set = 3.1415926;
-    int mode=0;
-    double z_sp=0;
-    double vz_sp=0;
+
     ROS_INFO("Arm and ta1111keoff");
 
+    float hover_yaw=0;
     while(ros::ok())
     {
-
         if(current_state.mode != "OFFBOARD" || !current_state.armed)
         {
             ros::spinOnce();
             loop_rate.sleep();
-            take_off_position=current_p;
-            into_offb=0;
+            hover_position=current_p;
 /*            pose.header.stamp = ros::Time::now();
             pose.pose.position.x = 0;
             pose.pose.position.y = 0;
@@ -132,29 +148,17 @@ int main(int argc, char** argv)
             pose.pose.orientation.z=sin(theta/2);
             local_pos_pub.publish(pose);*/
             setPVA(current_p,Vector3d::Zero(),Vector3d::Zero(),yaw_set);
+            hover_yaw=current_euler(2);
+
             continue;
         }
-        Vector3d p_sp(take_off_position(0), take_off_position(1), take_off_position(2));
+        Vector3d p_sp(hover_position(0), hover_position(1), hover_position(2));
         Vector3d v_sp(0, 0, 0);
-        setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
+        setPVA(p_sp, v_sp, Vector3d::Zero(), hover_yaw);
         ros::spinOnce();
         loop_rate.sleep();
 
 
-
-
-/*         Vector3d recorded_position = current_p;
-         while(ros::ok()){
-             if(current_state.mode != "OFFBOARD" || !current_state.armed){
-                 setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-                 recorded_position = current_p;
-             }else{
-                 setPVA(recorded_position, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-             }
-
-             loop_rate.sleep();
-             ros::spinOnce();
-         }*/
 
 
     }

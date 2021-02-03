@@ -181,7 +181,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "mpc_record");
     ros::NodeHandle nh;
 
-    std::string file="random_fly_new/mpc_record_square_fly.csv";
+    std::string file="real_drone1/test1.csv";
 
     outFile.open(file, std::ios::out);
     cout<<"record data to "<<file<<endl;
