@@ -120,3 +120,7 @@ set_target_properties(build_dataset PROPERTIES
 add_executable(square_fly src/square_fly.cpp)
 target_link_libraries(square_fly ${catkin_LIBRARIES})
 
+
+add_executable(record_plot_data src/record_plot_data.cpp)
+target_link_libraries(record_plot_data ${catkin_LIBRARIES})
+

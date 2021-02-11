@@ -73,8 +73,8 @@ void motion_primitives(Eigen::Vector3d p0, Eigen::Vector3d v0, Eigen::Vector3d a
     // double decay_parameter = 0.5;
     // double T = 0.2;
 
-    double j_limit = 5;
-    double a_limit = 5;
+    double j_limit = 1;
+    double a_limit = 1;
     double v_limit = v_max;
 
 
@@ -260,7 +260,7 @@ int main(int argc, char** argv) {
     rotation_matrix=yawAngle*pitchAngle*rollAngle;
 
     Matrix<double,4,3> point_raw_matrix;
-    float side=5;
+    float side=3;
     float fly_height=10;
     point_raw_matrix<<side,0,0,
             0,side,0,
@@ -292,7 +292,7 @@ int main(int argc, char** argv) {
     int point_number=0;
     while(ros::ok())
     {
-        motion_primitives(current_p, v0, a0, point_matrix.col(point_number), vf, af, 3.0, delt_t, p_t, v_t, a_t, t_vector);
+        motion_primitives(current_p, v0, a0, point_matrix.col(point_number), vf, af, 1.7, delt_t, p_t, v_t, a_t, t_vector);
         cout<<"t_vector.size: "<<t_vector.size()<<endl;
         cout<<"p_t-------"<<endl;
         cout<<p_t<<endl;
