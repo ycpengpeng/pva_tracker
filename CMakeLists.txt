@@ -124,3 +124,5 @@ target_link_libraries(square_fly ${catkin_LIBRARIES})
 add_executable(record_plot_data src/record_plot_data.cpp)
 target_link_libraries(record_plot_data ${catkin_LIBRARIES})
 
+add_executable(fake_random_fly src/fake_random_fly.cpp)
+target_link_libraries(fake_random_fly ${catkin_LIBRARIES})

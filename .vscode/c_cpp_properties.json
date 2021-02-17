@@ -1,0 +1,29 @@
+{
+    "configurations": [
+        {
+            "browse": {
+                "databaseFilename": "",
+                "limitSymbolsToIncludedHeaders": true
+            },
+            "includePath": [
+                "/home/pengpeng/catkin_ws/devel/include/**",
+                "/opt/ros/kinetic/include/**",
+                "/home/pengpeng/catkin_ws/src/an_qiaov1/include/**",
+                "/home/pengpeng/catkin_ws/src/gaofen2020/include/**",
+                "/home/pengpeng/catkin_ws/src/learining_service/include/**",
+                "/home/pengpeng/catkin_ws/src/mission/include/**",
+                "/home/pengpeng/catkin_ws/src/my_package/include/**",
+                "/home/pengpeng/catkin_ws/src/pp/include/**",
+                "/home/pengpeng/catkin_ws/src/pva_tracker/include/**",
+                "/home/pengpeng/catkin_ws/src/test_px4_sitl/include/**",
+                "/usr/include/**"
+            ],
+            "name": "ROS",
+            "intelliSenseMode": "gcc-x64",
+            "compilerPath": "/usr/bin/gcc",
+            "cStandard": "gnu11",
+            "cppStandard": "c++17"
+        }
+    ],
+    "version": 4
+}

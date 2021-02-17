@@ -165,7 +165,7 @@ void compute_circular_traj(const double r, const double vel, const Eigen::Vector
 
 
 int main(int argc, char** argv) {
-    ros::init(argc, argv, "square_fly");
+    ros::init(argc, argv, "fake_random_fly");
     ros::NodeHandle nh;
 
     ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
@@ -278,15 +278,21 @@ int main(int argc, char** argv) {
     Eigen::AngleAxisd yawAngle(AngleAxisd(eulerAngle(0),Vector3d::UnitZ()));
     Eigen::Matrix3d rotation_matrix;
     rotation_matrix=yawAngle*pitchAngle*rollAngle;
-
-    Matrix<double,4,3> point_raw_matrix;
+    
+   const int number_of_points=7;
+    
+    Matrix<double,number_of_points,3> point_raw_matrix;
     float side=4.0;
     float fly_height=10;
-    point_raw_matrix<<side,0,0,
-            0,side,0,
-            -side,0,0,
-            0,-side,0;
-    Matrix<double,3,4>  point_matrix;
+    point_raw_matrix<<1.2,2.5,1.2,
+            -3.2,2.1,2.5,
+            -2.9,0.2,3.1,
+            -1.5,2.0,4.2,
+            2.0,-0.2,2.1,
+            -1.0,1.2,3.4,
+            1.2,-0.9,4.3        
+            ;
+    Matrix<double,3,number_of_points>  point_matrix;
     point_matrix = rotation_matrix*point_raw_matrix.transpose();
     point_matrix(2,0)+=fly_height;
     point_matrix(2,1)+=fly_height;
@@ -337,7 +343,7 @@ int main(int argc, char** argv) {
             }
         }
         point_number++;
-        if(point_number==4)
+        if(point_number==number_of_points)
         {
             point_number=0;
         }
