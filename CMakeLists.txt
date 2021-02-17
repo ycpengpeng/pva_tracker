@@ -102,9 +102,9 @@ set_target_properties(mpc_tracker PROPERTIES
 
 add_executable(mpc_tracker_pytorch src/mpc_tracker_pytorch.cpp)
 target_link_libraries(mpc_tracker_pytorch ${catkin_LIBRARIES})
-set(Torch_DIR /home/pengpeng/Downloads/libtorch/share/cmake/Torch)
-find_package(Torch REQUIRED)
-target_link_libraries(mpc_tracker_pytorch ${TORCH_LIBRARIES} )
+# set(Torch_DIR /home/pengpeng/Downloads/libtorch/share/cmake/Torch)
+# find_package(Torch REQUIRED)
+# target_link_libraries(mpc_tracker_pytorch ${TORCH_LIBRARIES} )
 
 
 add_executable(random_fly src/random_fly.cpp)

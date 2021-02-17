@@ -1,7 +1,7 @@
 #!/bin/bash
 
 source /opt/ros/kinetic/setup.bash
-source /home/cc/ros_ws/motor_test_ws/devel/setup.bash
+source ~/catkin_ws/devel/setup.bash
 
 python ground_server.py &
 sleep 2

@@ -12,8 +12,7 @@
 #include <nav_msgs/Odometry.h>
 #include "pva_tracker/input.h"
 
-#include "torch/script.h"
-#include "torch/torch.h"
+
 
 #define GRAVITATIONAL_ACC 9.81
 
@@ -57,7 +56,7 @@ pva_tracker::input  input_msg;
 
 float mpc_kpx,mpc_kpy,mpc_kvx,mpc_kvy, mpc_kaxy,mpc_kpz, mpc_kvz, mpc_kaz;
 
-torch::jit::script::Module module;
+
 
 using namespace std;
 
@@ -499,8 +498,6 @@ int main(int argc, char** argv) {
 
     ros::NodeHandle nh;
 
-    module = torch::jit::load("/home/pengpeng/PycharmProjects/pythonProject/python_test/net_4999.pt");
-    module.eval();
 
     ros::Subscriber position_sub = nh.subscribe("/mavros/local_position/pose", 1, positionCallback);
     ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);

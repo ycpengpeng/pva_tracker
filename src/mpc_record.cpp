@@ -181,7 +181,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "mpc_record");
     ros::NodeHandle nh;
 
-    std::string file="real_drone1/test1.csv";
+    std::string file="real_drone1/test2.csv";
 
     outFile.open(file, std::ios::out);
     cout<<"record data to "<<file<<endl;
