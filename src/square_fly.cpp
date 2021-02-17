@@ -208,7 +208,37 @@ int main(int argc, char** argv) {
 
     double yaw_set = 0.0;
 
+
+
+
     ROS_INFO("Arm and takeoff");
+
+    Vector3d eulerAngle(20,10,30); //yaw pitch roll
+
+    eulerAngle=eulerAngle/180.0*3.14;
+    Eigen::AngleAxisd rollAngle(AngleAxisd(eulerAngle(2),Vector3d::UnitX()));
+    Eigen::AngleAxisd pitchAngle(AngleAxisd(eulerAngle(1),Vector3d::UnitY()));
+    Eigen::AngleAxisd yawAngle(AngleAxisd(eulerAngle(0),Vector3d::UnitZ()));
+    Eigen::Matrix3d rotation_matrix;
+    rotation_matrix=yawAngle*pitchAngle*rollAngle;
+
+    Matrix<double,4,3> point_raw_matrix;
+    float side=5.0;
+    float fly_height=10;
+    point_raw_matrix<<side,0,0,
+            0,side,0,
+            -side,0,0,
+            0,-side,0;
+    Matrix<double,3,4>  point_matrix;
+    point_matrix = rotation_matrix*point_raw_matrix.transpose();
+    point_matrix(2,0)+=fly_height;
+    point_matrix(2,1)+=fly_height;
+    point_matrix(2,2)+=fly_height;
+    point_matrix(2,3)+=fly_height;
+
+    cout<<"point_matrix； "<<point_matrix<<endl;
+
+
     while(ros::ok()){
         if( current_state.mode != "OFFBOARD" &&
             (ros::Time::now() - last_request > ros::Duration(5.0))){
@@ -240,7 +270,8 @@ int main(int argc, char** argv) {
             if(counter < take_off_send_times / 2){
                 z_sp = 0.5*take_off_acc*counter*delt_t*counter*delt_t;
                 vz_sp = counter*delt_t*take_off_acc;
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+                Vector3d p_sp=point_matrix.col(0);
                 Vector3d v_sp(0, 0, vz_sp);
                 setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
 
@@ -249,12 +280,14 @@ int main(int argc, char** argv) {
                 z_sp = take_off_send_times/2*delt_t*take_off_acc*t_this - 0.5*take_off_acc*t_this*t_this;
                 vz_sp = take_off_send_times/2*delt_t*take_off_acc - take_off_acc*t_this;
 
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+                Vector3d p_sp=point_matrix.col(0);
                 Vector3d v_sp(0, 0, vz_sp);
                 setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
 
             }else{
-                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
+//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
+                Vector3d p_sp=point_matrix.col(0);
                 setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
                 counter --;
             }
@@ -270,30 +303,7 @@ int main(int argc, char** argv) {
     }
 
 
-    Vector3d eulerAngle(20,10,30); //yaw pitch roll
 
-    eulerAngle=eulerAngle/180.0*3.14;
-    Eigen::AngleAxisd rollAngle(AngleAxisd(eulerAngle(2),Vector3d::UnitX()));
-    Eigen::AngleAxisd pitchAngle(AngleAxisd(eulerAngle(1),Vector3d::UnitY()));
-    Eigen::AngleAxisd yawAngle(AngleAxisd(eulerAngle(0),Vector3d::UnitZ()));
-    Eigen::Matrix3d rotation_matrix;
-    rotation_matrix=yawAngle*pitchAngle*rollAngle;
-
-    Matrix<double,4,3> point_raw_matrix;
-    float side=4.0;
-    float fly_height=10;
-    point_raw_matrix<<side,0,0,
-            0,side,0,
-            -side,0,0,
-            0,-side,0;
-    Matrix<double,3,4>  point_matrix;
-    point_matrix = rotation_matrix*point_raw_matrix.transpose();
-    point_matrix(2,0)+=fly_height;
-    point_matrix(2,1)+=fly_height;
-    point_matrix(2,2)+=fly_height;
-    point_matrix(2,3)+=fly_height;
-
-    cout<<"point_matrix； "<<point_matrix<<endl;
 
 
     /** Take off complete. Go to a point with minimum jerk trajectory **/
@@ -309,10 +319,12 @@ int main(int argc, char** argv) {
     Vector3d af(0, 0, 0);
 
 
-    int point_number=0;
+    int point_number=1;
+
+    Vector3d last_point= point_matrix.col(0);
     while(ros::ok())
     {
-        motion_primitives(current_p, current_v, a0, point_matrix.col(point_number), vf, af, 2.0, delt_t, p_t, v_t, a_t, t_vector);
+        motion_primitives(last_point, v0, a0, point_matrix.col(point_number), vf, af, 2.5, delt_t, p_t, v_t, a_t, t_vector);
         cout<<"t_vector.size: "<<t_vector.size()<<endl;
         cout<<"p_t-------"<<endl;
         cout<<p_t<<endl;
@@ -336,6 +348,7 @@ int main(int argc, char** argv) {
                 i=t_vector.size()-1;
             }
         }
+        last_point=point_matrix.col(point_number);
         point_number++;
         if(point_number==4)
         {

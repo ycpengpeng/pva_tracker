@@ -19,7 +19,7 @@ from mpl_toolkits.mplot3d import Axes3D
 # pre_x 35 pre_y 36 pre_z 37 pre_vx vy vz 38 39 40
 
 plt.rc('font',family='STIXGeneral')
-file = "/home/pengpeng/catkin_ws/record_plot_data/plot_data7_nn.csv"
+file = "/home/pengpeng/catkin_ws/record_plot_data/plot_data9_nn.csv"
 
 data = pd.read_csv(file)
 
@@ -29,7 +29,7 @@ data_array=np.array(data)
 
 print('M(18) mean: ',np.mean(abs(data_array[:,18])))
 
-file = "/home/pengpeng/catkin_ws/record_plot_data/plot_data8_no_nn.csv"
+file = "/home/pengpeng/catkin_ws/record_plot_data/plot_data10_no_nn.csv"
 data = pd.read_csv(file)
 data_array2=np.array(data)
 
@@ -40,7 +40,7 @@ print('data_array2 size:',data_array2.shape)
 
 figure=plt.figure(figsize=(15,4),dpi=300)
 left =0
-right =2500
+right =2000
 time=np.arange(right-left)/30.0
 
 axes1=figure.add_subplot(2,1,1,projection='3d')
