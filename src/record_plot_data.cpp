@@ -25,7 +25,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstdint>
-#include "pva_tracker/input.h"
+#include "pva_tracker_pp/input.h"
 
 #define PI 3.1415926
 #define number 10
@@ -121,7 +121,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
     planned_a << msg->accelerations[0], msg->accelerations[1], msg->accelerations[2];
 }
 
-void pred_cb(const pva_tracker::input::ConstPtr& msg)
+void pred_cb(const pva_tracker_pp::input::ConstPtr& msg)
 {
     predict[0]=msg->pred_x;
     predict[1]=msg->pred_y;
@@ -220,7 +220,7 @@ int main(int argc, char **argv)
     ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 1, velocity_sub_cb);
     ros::Subscriber att_ctrl_sub = nh.subscribe<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1,att_ctrl_cb);
 
-    ros::Subscriber pred_sub = nh.subscribe<pva_tracker::input>("/pred", 1,pred_cb);
+    ros::Subscriber pred_sub = nh.subscribe<pva_tracker_pp::input>("/pred", 1,pred_cb);
 
 
     // wait for FCU connection

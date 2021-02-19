@@ -9,7 +9,7 @@ if __name__ == '__main__':
     rospy.init_node('onboard_reconfigure', anonymous=True)
     client = dynamic_reconfigure.client.Client("tracker")
 
-    serial = serial.Serial('/dev/ttyUSB1', 57600, timeout=0.5)  # /dev/ttyUSB0
+    serial = serial.Serial('/dev/xbee', 57600, timeout=0.5)  # /dev/ttyUSB0
 
     while not rospy.is_shutdown():
         if serial.isOpen():

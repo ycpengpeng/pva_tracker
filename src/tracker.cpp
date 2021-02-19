@@ -10,7 +10,7 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <math.h>
 #include <dynamic_reconfigure/server.h>
-#include <pva_tracker/PVA_TrackerConfig.h>
+#include <pva_tracker_pp/PVA_TrackerConfig.h>
 #include <nav_msgs/Odometry.h>
 
 #define GRAVITATIONAL_ACC 9.81

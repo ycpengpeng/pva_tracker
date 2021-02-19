@@ -8,12 +8,12 @@
 #include <mavros_msgs/AttitudeTarget.h>
 #include <math.h>
 #include <dynamic_reconfigure/server.h>
-#include <pva_tracker/PVA_TrackerConfig.h>
+#include <pva_tracker_pp/PVA_TrackerConfig.h>
 #include <nav_msgs/Odometry.h>
-#include "pva_tracker/input.h"
+#include "pva_tracker_pp/input.h"
 
-#include "torch/script.h"
-#include "torch/torch.h"
+// #include "torch/script.h"
+// #include "torch/torch.h"
 
 #define GRAVITATIONAL_ACC 9.81
 
@@ -51,13 +51,13 @@ Vector3d last_current_v;
 ros::Publisher pre_pub;
 ros::Publisher nn_pub;
 
-pva_tracker::input  predict_msg;
+pva_tracker_pp::input  predict_msg;
 
-pva_tracker::input  input_msg;
+pva_tracker_pp::input  input_msg;
 
 float mpc_kpx,mpc_kpy,mpc_kvx,mpc_kvy, mpc_kaxy,mpc_kpz, mpc_kvz, mpc_kaz;
 
-torch::jit::script::Module module;
+//torch::jit::script::Module module;
 
 using namespace std;
 
@@ -377,7 +377,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 }
 
 
-void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
+void tracker_update_Callback(const pva_tracker_pp::input::ConstPtr& msg)
 {
 
     //反归一化
@@ -502,8 +502,8 @@ int main(int argc, char** argv) {
 
     ros::NodeHandle nh;
 
-    module = torch::jit::load("/home/pengpeng/PycharmProjects/pythonProject/python_test/net_4999.pt");
-    module.eval();
+    //module = torch::jit::load("/home/pengpeng/PycharmProjects/pythonProject/python_test/net_4999.pt");
+    //module.eval();
 
     ros::Subscriber position_sub = nh.subscribe("/mavros/local_position/pose", 1, positionCallback);
     ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);
@@ -512,9 +512,9 @@ int main(int argc, char** argv) {
     att_ctrl_pub = nh.advertise<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1);
     odom_sp_enu_pub = nh.advertise<nav_msgs::Odometry>("/odom_sp_enu", 1);
 
-    pre_pub=nh.advertise<pva_tracker::input>("/pred", 1);
+    pre_pub=nh.advertise<pva_tracker_pp::input>("/pred", 1);
 
-    nn_pub=nh.advertise<pva_tracker::input>("/nn_compute", 1);
+    nn_pub=nh.advertise<pva_tracker_pp::input>("/nn_compute", 1);
 
     ros::Subscriber tracker_update_sub = nh.subscribe("/tracker_update", 1, tracker_update_Callback);
 

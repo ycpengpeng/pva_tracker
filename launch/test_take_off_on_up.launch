@@ -1,9 +1,9 @@
 <launch>
 
 	<!-- Turtlesim Node-->
-	<node pkg="pva_tracker" type="test_take_off_on_up" name="test_take_off_on_up" output="screen"/>
+	<node pkg="pva_tracker_pp" type="test_take_off_on_up" name="test_take_off_on_up" output="screen"/>
 
-	<node pkg="pva_tracker" type="tracker" name="tracker" />
+	<node pkg="pva_tracker_pp" type="tracker" name="tracker" />
 
     <node pkg="rosbag" type="record" name="test_take_off_on_up_record" args="record -O /home/pengpeng/catkin_ws/src/pva_tracker/bag/test_take_off_on_up_record /mavros/local_position/pose /test_take_off "/>
 

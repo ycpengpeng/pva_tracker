@@ -1,5 +1,5 @@
 <package format="2">
-  <name>pva_tracker</name>
+  <name>pva_tracker_pp</name>
   <version>1.0.0</version>
   <description>
     <p>track pva given by path planner</p>

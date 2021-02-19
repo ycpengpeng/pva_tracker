@@ -17,7 +17,7 @@ import copy
 import multiprocessing as mp
 
 import time
-from pva_tracker.msg import input
+from pva_tracker_pp.msg import input
 
 
 def nnCallback(msg):
@@ -107,7 +107,7 @@ Net = torch.nn.Sequential(
     torch.nn.Linear(128,6),
     torch.nn.Tanh(),
 )
-Net.load_state_dict(torch.load("/home/pengpeng/catkin_ws/random_fly_new_new/net_4999.pkl", map_location='cpu'))
+Net.load_state_dict(torch.load("/home/cc/Downloads/net_4999.pkl", map_location='cpu'))
 
 
 rospy.Subscriber("/nn_compute", input, nnCallback)

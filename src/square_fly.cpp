@@ -19,17 +19,19 @@
 #include <mavros_msgs/SetMode.h>
 
 using namespace Eigen;
-using namespace std;
 
 Vector3d current_p,current_v,current_a,last_current_v,last_a;
 mavros_msgs::State current_state;
 ros::Publisher pva_pub;
 ros::Time last_time;
 
+geometry_msgs::PoseStamped pose;
+
 void positionCallback(const geometry_msgs::PoseStamped::ConstPtr &msg)
 {
     /// ENU frame to NWU
     current_p << msg->pose.position.x, msg->pose.position.y, msg->pose.position.z;
+    pose=*msg;
 }
 
 void stateCallback(const mavros_msgs::State::ConstPtr &msg)
@@ -164,7 +166,9 @@ void compute_circular_traj(const double r, const double vel, const Eigen::Vector
 }
 
 
-int main(int argc, char** argv) {
+int main(int argc, char** argv) 
+{
+
     ros::init(argc, argv, "square_fly");
     ros::NodeHandle nh;
 
@@ -179,6 +183,8 @@ int main(int argc, char** argv) {
             ("mavros/set_mode");
 
     ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 1, velocity_sub_cb);
+
+    ros::Publisher local_pos_pub = nh.advertise<geometry_msgs::PoseStamped>("mavros/setpoint_position/local", 1);
 
     const int LOOPRATE = 30;
     ros::Rate loop_rate(LOOPRATE);
@@ -197,168 +203,174 @@ int main(int argc, char** argv) {
     ros::Time last_request = ros::Time::now();
 
     /// Take off with constant acceleration
-    double take_off_height = 4;
+    double take_off_height = 1;
     double take_off_acc = 1.0;
 
     double take_off_time_half = sqrt(take_off_height/take_off_acc);
     double delt_t = 1.0 / LOOPRATE;
     double take_off_send_times = take_off_time_half / delt_t * 2;
     int counter = 0;
-    Vector3d recorded_takeoff_position(current_p(0), current_p(1), current_p(2));
+    Vector3d recorded_start_position(current_p(0), current_p(1), current_p(2));
 
-    double yaw_set = 0.0;
+    double yaw_set = 90.0/180.0*3.1415926;
 
+    int into_offb=1;
 
+    int take_off_flag=0;
+    int change_flag=1;
 
 
     ROS_INFO("Arm and takeoff");
 
-    Vector3d eulerAngle(20,10,30); //yaw pitch roll
 
-    eulerAngle=eulerAngle/180.0*3.14;
-    Eigen::AngleAxisd rollAngle(AngleAxisd(eulerAngle(2),Vector3d::UnitX()));
-    Eigen::AngleAxisd pitchAngle(AngleAxisd(eulerAngle(1),Vector3d::UnitY()));
-    Eigen::AngleAxisd yawAngle(AngleAxisd(eulerAngle(0),Vector3d::UnitZ()));
-    Eigen::Matrix3d rotation_matrix;
-    rotation_matrix=yawAngle*pitchAngle*rollAngle;
+    int point_number;
+    Vector3d last_point;
+    int last_point_number;
 
-    Matrix<double,4,3> point_raw_matrix;
-    float side=5.0;
-    float fly_height=10;
-    point_raw_matrix<<side,0,0,
-            0,side,0,
-            -side,0,0,
-            0,-side,0;
-    Matrix<double,3,4>  point_matrix;
-    point_matrix = rotation_matrix*point_raw_matrix.transpose();
-    point_matrix(2,0)+=fly_height;
-    point_matrix(2,1)+=fly_height;
-    point_matrix(2,2)+=fly_height;
-    point_matrix(2,3)+=fly_height;
+    int square_count=0;
 
-    cout<<"point_matrix； "<<point_matrix<<endl;
+    while(ros::ok())
+    {
+        if( current_state.mode != "OFFBOARD")
+        {
+            ros::spinOnce();
+            loop_rate.sleep();
+
+            recorded_start_position=current_p;
+            into_offb=0;
+
+            // pose.header.stamp = ros::Time::now();
+            // pose.pose.position.x = current_p(0);
+            // pose.pose.position.y = current_p(1);
+            // pose.pose.position.z =current_p(2);
+            // double theta=0/180.0*3.14;
+           // pose.pose.orientation.w=cos(theta/2);
+           // pose.pose.orientation.x=0.0;
+            //pose.pose.orientation.y=0;
+            //pose.pose.orientation.z=sin(theta/2);
+            local_pos_pub.publish(pose);
 
 
-    while(ros::ok()){
-        if( current_state.mode != "OFFBOARD" &&
-            (ros::Time::now() - last_request > ros::Duration(5.0))){
-            if( set_mode_client.call(offb_set_mode) &&
-                offb_set_mode.response.mode_sent){
-                ROS_INFO("Offboard enabled");
-            }
-            last_request = ros::Time::now();
-        } else {
-            if( !current_state.armed &&
-                (ros::Time::now() - last_request > ros::Duration(5.0))){
-                if( arming_client.call(arm_cmd) &&
-                    arm_cmd.response.success){
-                    ROS_INFO("Vehicle armed");
-                }
-                last_request = ros::Time::now();
-            }
-        }
+            take_off_flag=0;
+            counter=0;
+            change_flag=1;
+            continue;
+        } 
 
         trajectory_msgs::JointTrajectoryPoint pva_setpoint;
 
 
 
-        if(current_state.mode != "OFFBOARD" || !current_state.armed){
-            setPVA(current_p, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-        }else{
-            counter ++;
-            double z_sp, vz_sp;
-            if(counter < take_off_send_times / 2){
-                z_sp = 0.5*take_off_acc*counter*delt_t*counter*delt_t;
-                vz_sp = counter*delt_t*take_off_acc;
-//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
-                Vector3d p_sp=point_matrix.col(0);
-                Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
 
-            }else if(counter < take_off_send_times){
-                double t_this = (counter-take_off_send_times/2)*delt_t;
-                z_sp = take_off_send_times/2*delt_t*take_off_acc*t_this - 0.5*take_off_acc*t_this*t_this;
-                vz_sp = take_off_send_times/2*delt_t*take_off_acc - take_off_acc*t_this;
-
-//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
-                Vector3d p_sp=point_matrix.col(0);
-                Vector3d v_sp(0, 0, vz_sp);
-                setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
-
-            }else{
-//                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
-                Vector3d p_sp=point_matrix.col(0);
-                setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
-                counter --;
-            }
-        }
-
-        if(current_p(2) > take_off_height-0.05){
-            ROS_INFO_ONCE("Takeoff Complete!");
-            break;
-        }
-
-        loop_rate.sleep();
-        ros::spinOnce();
-    }
-
-
-
-
-
-    /** Take off complete. Go to a point with minimum jerk trajectory **/
-    double circle_radius = 1.8;
-
-    MatrixXd p_t, v_t, a_t;
-    Eigen::VectorXd t_vector;
-    Vector3d v0(0.0, 0.0, 0.0);
-    Vector3d a0(0.0, 0.0, 0.0);
-
-    Vector3d pf(circle_radius, -circle_radius, take_off_height);
-    Vector3d vf(0, 0, 0);
-    Vector3d af(0, 0, 0);
-
-
-    int point_number=1;
-
-    Vector3d last_point= point_matrix.col(0);
-    while(ros::ok())
-    {
-        motion_primitives(last_point, v0, a0, point_matrix.col(point_number), vf, af, 2.5, delt_t, p_t, v_t, a_t, t_vector);
-        cout<<"t_vector.size: "<<t_vector.size()<<endl;
-        cout<<"p_t-------"<<endl;
-        cout<<p_t<<endl;
-        cout<<"-------"<<endl;
-        cout<<"v_t-------"<<endl;
-        cout<<v_t<<endl;
-        cout<<"-------"<<endl;
-        cout<<"a_t-------"<<endl;
-        cout<<a_t<<endl;
-        cout<<"-------"<<endl;
-        int i=0;
-        while((current_p-point_matrix.col(point_number)).norm()>=0.2)
+        if(take_off_flag==0)
         {
+//             counter ++;
+//             double z_sp, vz_sp;
 
-            setPVA(p_t.row(i), v_t.row(i), a_t.row(i), yaw_set);// a_t.row(i));
-            loop_rate.sleep();
-            ros::spinOnce();
-            i++;
-            if(i>=t_vector.size()-1)
+//             if(counter < take_off_send_times / 2)
+//             {
+//                 z_sp = 0.5*take_off_acc*counter*delt_t*counter*delt_t;
+//                 vz_sp = counter*delt_t*take_off_acc;
+// //                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+//                 Vector3d p_sp=point_matrix.col(0);
+//                 Vector3d v_sp(0, 0, vz_sp);
+//                 setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
+
+//             }else if(counter < take_off_send_times)
+//             {
+//                 double t_this = (counter-take_off_send_times/2)*delt_t;
+//                 z_sp = take_off_send_times/2*delt_t*take_off_acc*t_this - 0.5*take_off_acc*t_this*t_this;
+//                 vz_sp = take_off_send_times/2*delt_t*take_off_acc - take_off_acc*t_this;
+
+// //                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), z_sp);
+//                 Vector3d p_sp=point_matrix.col(0);
+//                 Vector3d v_sp(0, 0, vz_sp);
+//                 setPVA(p_sp, v_sp, Vector3d::Zero(), yaw_set);
+
+//             }else
+//             {
+// //                Vector3d p_sp(recorded_takeoff_position(0), recorded_takeoff_position(1), take_off_height);
+//                 Vector3d p_sp=point_matrix.col(0);
+//                 setPVA(p_sp, Vector3d::Zero(), Vector3d::Zero(), yaw_set);
+//                 counter --;
+//             }
+            if(current_p(2) > take_off_height-0.2)
             {
-                i=t_vector.size()-1;
+                ROS_INFO_ONCE("start square fly");
+                take_off_flag=1;
+                point_number=1;
+                last_point_number=0 ;
+                square_count=0;
             }
         }
-        last_point=point_matrix.col(point_number);
-        point_number++;
-        if(point_number==4)
+
+
+        if(take_off_flag==1)
         {
-            point_number=0;
+            
+            Vector3d eulerAngle(0,0,0); //yaw pitch roll
+
+            eulerAngle=eulerAngle/180.0*3.14;
+            Eigen::AngleAxisd rollAngle(AngleAxisd(eulerAngle(2),Vector3d::UnitX()));
+            Eigen::AngleAxisd pitchAngle(AngleAxisd(eulerAngle(1),Vector3d::UnitY()));
+            Eigen::AngleAxisd yawAngle(AngleAxisd(eulerAngle(0),Vector3d::UnitZ()));
+            Eigen::Matrix3d rotation_matrix;
+            rotation_matrix=yawAngle*pitchAngle*rollAngle;
+
+            Matrix<double,4,3> point_raw_matrix;
+            float side=2.0;
+            point_raw_matrix<<recorded_start_position(0),recorded_start_position(1),0,
+                    recorded_start_position(0),recorded_start_position(1)-side,0,
+                    recorded_start_position(0)+side,recorded_start_position(1)-side,0,
+                    recorded_start_position(0)+side,recorded_start_position(1),0;
+            Matrix<double,3,4>  point_matrix;
+            point_matrix = rotation_matrix*point_raw_matrix.transpose();
+            point_matrix(2,0)+=take_off_height;
+            point_matrix(2,1)+=take_off_height;
+            point_matrix(2,2)+=take_off_height;
+            point_matrix(2,3)+=take_off_height;
+
+            std::cout<<"point_matrix； "<<point_matrix<<std::endl;
+
+            MatrixXd p_t, v_t, a_t;
+            Eigen::VectorXd t_vector;
+            Vector3d v0(0.0, 0.0, 0.0);
+            Vector3d a0(0.0, 0.0, 0.0);
+            Vector3d vf(0, 0, 0);
+            Vector3d af(0, 0, 0);
+
+            square_count++;
+
+
+            if(change_flag==1)
+            {
+                motion_primitives(point_matrix.col(last_point_number), v0, a0, point_matrix.col(point_number), vf, af, 2.5, delt_t, p_t, v_t, a_t, t_vector);
+                change_flag=0;
+                square_count=0;
+            }
+            setPVA(p_t.row(square_count), v_t.row(square_count), a_t.row(square_count), yaw_set);// a_t.row(i));
+
+            if(square_count>=t_vector.size()-1)
+            {
+                square_count=t_vector.size()-1;
+            }
+
+            if((current_p-point_matrix.col(point_number)).norm()<0.2)
+            {
+                change_flag=1;
+                last_point_number=point_number;
+                point_number++;
+                if(point_number==4)
+                {
+                    point_number=0;
+                }
+            }
+
         }
-        cout<<"target: "<<point_matrix.col(point_number)<<endl;
+
         loop_rate.sleep();
         ros::spinOnce();
     }
-
 
     return 0;
 }

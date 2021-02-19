@@ -70,8 +70,6 @@ class Q_Window(QWidget):
             self.msg_label.setText(u'等待初始化参数...')
             self.timer.setInterval(10)
             data = self.serial.read_all()
-            if data != "":
-                print(data)
             if data == 'init':
                 self.timer.stop()
                 self.msg_label.setText(u'初始化参数接收中...')
@@ -152,7 +150,7 @@ class Q_Window(QWidget):
             # Waiting for Feedback
             update_succeed = False
             for i in range(20):
-                data = self.serial.read_all()
+                data = self.serial.readline()
                 try:
                     if data != '':
                         if abs(float(data) - check_flag) < 0.01:
