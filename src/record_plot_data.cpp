@@ -201,7 +201,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "record_plot_data");
     ros::NodeHandle nh;
 
-    std::string file="/home/pengpeng/catkin_ws/record_plot_data/plot_data10_no_nn.csv";
+    std::string file="/home/pengpeng/catkin_ws/record_plot_data/plot_data11_nn.csv";
 
     outFile.open(file, std::ios::out);
     cout<<"record data to "<<file<<endl;
