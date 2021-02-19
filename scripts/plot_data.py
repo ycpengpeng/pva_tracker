@@ -40,7 +40,7 @@ print('data_array2 size:',data_array2.shape)
 
 figure=plt.figure(figsize=(15,4),dpi=300)
 left =5
-right =100
+right =1500
 time=np.arange(right-left)/30.0
 
 axes1=figure.add_subplot(1,1,1,projection='3d')
@@ -48,8 +48,8 @@ axes1.plot3D(data_array[:,0],data_array[:,1],data_array[:,2],'b')
 axes1.plot3D(data_array[:,9],data_array[:,10],data_array[:,11],'r')
 axes1.plot3D(data_array2[:,9],data_array2[:,10],data_array2[:,11],'g')
 
-# axes1.plot(time,data_array[left:right,0])
-# axes1.plot(time,data_array[left:right,9])
+# axes1.plot(time,data_array[left:right,1])
+# axes1.plot(time,data_array[left:right,10])
 
 # tmp=data_array[:,12]*data_array[:,12]+data_array[:,13]*data_array[:,13]+data_array[:,14]*data_array[:,14]
 
@@ -60,13 +60,13 @@ plt.ylabel("y")
 
 
 
-# axes1=figure.add_subplot(2,1,1)
+# axes1=figure.add_subplot(2,1,2)
 # axes1.plot(time,data_array[left:right,3])
 # axes1.plot(time,data_array[left:right,12])
 
 # axes2=figure.add_subplot(2,1,2)
-# axes2.plot(time,data_array2[left:right,0])
-# axes2.plot(time,data_array2[left:right,9])
+# axes2.plot(time,data_array2[left:right,1])
+# axes2.plot(time,data_array2[left:right,10])
 
 
 
