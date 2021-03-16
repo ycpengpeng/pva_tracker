@@ -75,12 +75,21 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
     std::vector<std::string> file;
     std::ofstream outFile;
 
-    std::string data_file="/home/pengpeng/catkin_ws/real_drone1/dataset_square_fly_real_drone_for_test.csv";  //生成的数据集
+    std::string data_file="/home/pengpeng/catkin_ws/real_drone1/dataset_fake_random_fly_record_03_14_20_18_55_for_test.csv";  //生成的数据集
 
     int LAST=3;
 
-    file.push_back("/home/pengpeng/catkin_ws/real_drone1/square_fly_02_21_16_07_24.csv");  //用来构建数据集的原始数据
-    file.push_back("/home/pengpeng/catkin_ws/real_drone1/square_fly_02_21_19_23_15.csv"); 
+/*    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_11_22_30_05.csv");  //用来构建数据集的原始数据
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_11_22_39_20.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_11_46_49.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_11_51_06.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_11_59_11.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_12_15_05.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_12_30_33.csv");
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/random_fly_record_03_12_12_37_47.csv");*/
+
+
+    file.push_back("/home/pengpeng/catkin_ws/real_drone1/fake_random_fly_record_03_14_20_18_55.csv"); //用来构建数据集的原始数据
 
 
 

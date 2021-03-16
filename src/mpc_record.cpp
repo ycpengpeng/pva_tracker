@@ -38,6 +38,9 @@ Vector3d current_p;
 Vector3d current_v,last_current_v;
 Vector3d current_a,last_a;
 
+Vector3d last_current_p;
+
+
 Vector3d planned_p;
 Vector3d planned_v;
 Vector3d planned_a;
@@ -79,6 +82,10 @@ Eigen::Vector3d quaternion2euler_eigen(float x, float y, float z, float w)
 }
 
 
+void stateCallback(const mavros_msgs::State::ConstPtr &msg)
+{
+    current_state = *msg;
+}
 
 
 
@@ -120,32 +127,50 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 void att_ctrl_cb(const mavros_msgs::AttitudeTarget::ConstPtr &msg)
 {
 
-    set_orientation <<msg->orientation.x,msg->orientation.y,msg->orientation.z,msg->orientation.w;
-    //roll pitch yaw
-    Eigen::Vector3d euler=quaternion2euler_eigen(msg->orientation.x,msg->orientation.y,msg->orientation.z,msg->orientation.w);
-    set_thrust=msg->thrust;
+    if(current_state.mode == "OFFBOARD")
+    {
+
+        if(last_current_p(0)!=current_p(0)||last_current_p(1)!=current_p(1))
+        {
+
+
+            set_orientation <<msg->orientation.x,msg->orientation.y,msg->orientation.z,msg->orientation.w;
+            //roll pitch yaw
+            Eigen::Vector3d euler=quaternion2euler_eigen(msg->orientation.x,msg->orientation.y,msg->orientation.z,msg->orientation.w);
+            set_thrust=msg->thrust;
 //    ROS_INFO("VX %f VY %f VZ  %f",current_v(0),current_v(1),current_v(2));
 //规划位置1*3，规划速度1*3，规划加速度1*3，实际位置1*3，实际速度1*3，实际加速度1*3，
 // 位置差值1*3，速度差值1*3，加速度差值1*3， 给定si yuan shu 1*4，gei ding ou la jiao1*3,给定推力1*1
-    outFile <<planned_p(0)<< ','<< planned_p(1) << ','<<planned_p(2)
-            << ','<<planned_v(0)<< ','<< planned_v(1) << ','<<planned_v(2)
-            << ','<<planned_a(0)<< ','<< planned_a(1) << ','<<planned_a(2)
-            << ','<<current_p(0) << ','<<current_p(1)<<','<<current_p(2)
-            << ','<<current_v(0)<< ','<<current_v(1)<< ','<<current_v(2)
-            << ','<<current_a(0)<< ','<<current_a(1)<< ','<<current_a(2)
 
-            << ','<<current_p(0)-last_planned_p(0)<< ','<<current_p(1)-last_planned_p(1)<<','<<current_p(2)-last_planned_p(2)
-            << ','<<current_v(0)-last_planned_v(0)<< ','<<current_v(1)-last_planned_v(1)<< ','<<current_v(2)-last_planned_v(2)
-            << ','<<current_a(0)-last_planned_a(0)<< ','<<current_a(1)-last_planned_a(1)<< ','<<current_a(2)-last_planned_a(2)
 
-            << ','<<set_orientation(0)<< ','<<set_orientation(1)<< ','<<set_orientation(2)<<','<<set_orientation(3)
+            outFile <<planned_p(0)<< ','<< planned_p(1) << ','<<planned_p(2)
+                    << ','<<planned_v(0)<< ','<< planned_v(1) << ','<<planned_v(2)
+                    << ','<<planned_a(0)<< ','<< planned_a(1) << ','<<planned_a(2)
+                    << ','<<current_p(0) << ','<<current_p(1)<<','<<current_p(2)
+                    << ','<<current_v(0)<< ','<<current_v(1)<< ','<<current_v(2)
+                    << ','<<current_a(0)<< ','<<current_a(1)<< ','<<current_a(2)
 
-            << ','<<euler(0)<< ','<<euler(1)<< ','<<euler(2)
-            << ','<<set_thrust
-            << '\n';
-    last_planned_p=planned_p;
-    last_planned_v=planned_v;
-    last_planned_a=planned_a;
+                    << ','<<current_p(0)-last_planned_p(0)<< ','<<current_p(1)-last_planned_p(1)<<','<<current_p(2)-last_planned_p(2)
+                    << ','<<current_v(0)-last_planned_v(0)<< ','<<current_v(1)-last_planned_v(1)<< ','<<current_v(2)-last_planned_v(2)
+                    << ','<<current_a(0)-last_planned_a(0)<< ','<<current_a(1)-last_planned_a(1)<< ','<<current_a(2)-last_planned_a(2)
+
+                    << ','<<set_orientation(0)<< ','<<set_orientation(1)<< ','<<set_orientation(2)<<','<<set_orientation(3)
+
+                    << ','<<euler(0)<< ','<<euler(1)<< ','<<euler(2)
+                    << ','<<set_thrust
+                    << '\n';
+            last_planned_p=planned_p;
+            last_planned_v=planned_v;
+            last_planned_a=planned_a;
+
+
+        }
+
+
+    }
+    last_current_p=current_p;
+
+
 
 }
 
@@ -196,19 +221,20 @@ int main(int argc, char **argv)
 //    zuan_quan_point_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 1);
     ros::Rate rate(30.0);
     //ROS_INFO("1111");
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 1, positionCallback);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vicon_pose", 1, positionCallback);
     ros::Subscriber pva_sub = nh.subscribe("/pva_setpoint", 1, pvaCallback);
-    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("mavros/local_position/velocity_local", 1, velocity_sub_cb);
+    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("/vicon_vel", 1, velocity_sub_cb);
     ros::Subscriber att_ctrl_sub = nh.subscribe<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1,att_ctrl_cb);
 
 
+    ros::Subscriber state_sub = nh.subscribe<mavros_msgs::State>("/mavros/state", 1, stateCallback);
 
     // wait for FCU connection
     while(ros::ok() )
     {
 
         ros::spinOnce();
-        rate.sleep();
+        //rate.sleep();
     }
 
 
