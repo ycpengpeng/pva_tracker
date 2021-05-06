@@ -120,7 +120,7 @@ void read_data_from_csv(std::vector<tiny_dnn::vec_t> &train_data,std::vector<tin
     //把pitch反过来
     for(int i=0;i<data.size();i++)
     {
-        data[i][32]=-data[i][32];
+        data[i][32]=data[i][32];
     }
 
 

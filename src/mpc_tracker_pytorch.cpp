@@ -12,7 +12,8 @@
 #include <nav_msgs/Odometry.h>
 #include "pva_tracker/input.h"
 
-
+//#include "torch/script.h"
+//#include "torch/torch.h"
 
 #define GRAVITATIONAL_ACC 9.81
 
@@ -56,7 +57,7 @@ pva_tracker::input  input_msg;
 
 float mpc_kpx,mpc_kpy,mpc_kvx,mpc_kvy, mpc_kaxy,mpc_kpz, mpc_kvz, mpc_kaz;
 
-
+//torch::jit::script::Module module;
 
 using namespace std;
 
@@ -290,9 +291,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
         {
             input_msg.input[i]=nn_input[i];
         }
-        input_msg.a_x=a_des[0];
-        input_msg.a_y=a_des[1];
-        input_msg.a_z=a_des[2];
+
 
 
         nn_pub.publish(input_msg);
@@ -381,7 +380,7 @@ void pvaCallback(const trajectory_msgs::JointTrajectoryPoint::ConstPtr& msg)
 void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
 {
 
-/*    //反归一化
+    //反归一化
     //ROS_INFO_THROTTLE(2,"get message from python");
     std::vector<float> predict;
     for(int i=0;i<6;i++)
@@ -405,19 +404,24 @@ void tracker_update_Callback(const pva_tracker::input::ConstPtr& msg)
     a_des(2)=a_des(2)-(mpc_kpz*predict[2]+mpc_kvz*predict[5]);
     accel2quater(a_des,att_des_q,thrust_des);
 
-    accel2quater(a_des,att_des_q,thrust_des);*/
+    accel2quater(a_des,att_des_q,thrust_des);
 
 
-    float roll=msg->input[0];
+/*    float roll=msg->input[0];
     float pitch=msg->input[1];
     float yaw=msg->input[2];
-    float thrust_des=msg->input[3];
+    float thrust_raw=msg->input[3];
 
 
+    //fan gui yi hua
+    roll=roll*max_min[6]+min_arr[6];
+    pitch=pitch*max_min[7]+min_arr[7];
+    yaw=yaw*max_min[8]+min_arr[8];
+    float thrust_python=thrust_raw*max_min[9]+min_arr[9];
+//    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_python: %f",roll,pitch,yaw,thrust_python);*/
 
-//    ROS_INFO("get from python roll: %f pitch:  %f yaw: %f  thrust_python: %f",roll,pitch,yaw,thrust_python);
-
-    Eigen::Quaterniond att_des_q=euler2quaternion_eigen(roll,pitch,yaw);
+/*
+    Eigen::Quaterniond att_des_python=euler2quaternion_eigen(roll,pitch,yaw);*/
 
     att_setpoint.header.stamp = ros::Time::now();
     att_setpoint.orientation.w = att_des_q.w();
@@ -498,6 +502,8 @@ int main(int argc, char** argv) {
 
     ros::NodeHandle nh;
 
+    //module = torch::jit::load("/home/pengpeng/PycharmProjects/pythonProject/python_test/net_4999.pt");
+    //module.eval();
 
     ros::Subscriber position_sub = nh.subscribe("/mavros/local_position/pose", 1, positionCallback);
     ros::Subscriber velocity_sub = nh.subscribe("/mavros/local_position/velocity_local", 1, velocityCallback);

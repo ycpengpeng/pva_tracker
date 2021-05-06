@@ -228,7 +228,7 @@ int main(int argc, char **argv)
     ros::init(argc, argv, "record_plot_data");
     ros::NodeHandle nh;
 
-    std::string file="real_drone1/11.csv";
+    std::string file="/home/pengpeng/catkin_ws/record_plot_data/11.csv";
 
     outFile.open(file, std::ios::out);
     cout<<"record data to "<<file<<endl;
@@ -243,9 +243,9 @@ int main(int argc, char **argv)
 //    zuan_quan_point_pub = nh.advertise<trajectory_msgs::JointTrajectoryPoint>("/zuan_quan_setpoint", 1);
     ros::Rate rate(30.0);
     //ROS_INFO("1111");
-    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/vicon_pose", 1, positionCallback);
+    ros::Subscriber pose_sub = nh.subscribe<geometry_msgs::PoseStamped>("/mavros/local_position/pose", 1, positionCallback);
     ros::Subscriber pva_sub = nh.subscribe("/pva_setpoint", 1, pvaCallback);
-    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("/vicon_vel", 1, velocity_sub_cb);
+    ros::Subscriber velocity_sub = nh.subscribe<geometry_msgs::TwistStamped>("/mavros/local_position/velocity_local", 1, velocity_sub_cb);
     ros::Subscriber att_ctrl_sub = nh.subscribe<mavros_msgs::AttitudeTarget>("/mavros/setpoint_raw/attitude", 1,att_ctrl_cb);
 
 
